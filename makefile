@@ -13,7 +13,7 @@ cppobjects=$(patsubst src/%.cpp,output/%.o,$(shell find src -name "*.cpp"))
 cppobjects+=output/glad.o # apparently my glfw already comes with bindings for opengl (might need glad only for windows)
 shaders=$(patsubst shaders/%.glsl,output/%.spv,$(shell find shaders -name "*.glsl"))
 
-ifdef DEBUG
+ifndef RELEASE
 	COMPFLAGS+= -ggdb -DDEBUG
 	LINKFLAGS+= -ggdb
 endif
