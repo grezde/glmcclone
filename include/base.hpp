@@ -36,4 +36,5 @@ using std::map;
     #define ERR_EXIT(x) do{ cerr << "FATAL ERROR: " << x << "\n"; exit(1); } while(0)
 #endif
 
-vector<u8> readWholeFile(const char* filename);
+vector<u8> readFileBytes(const char* filename);
+string readFileString(const char* filename);
