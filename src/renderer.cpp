@@ -4,6 +4,7 @@
 #include "renderer.hpp"
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/matrix_projection.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <stb_image.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -118,7 +119,7 @@ void Shader::setMat4(const char* name, const glm::mat4& value) {
 
 #ifdef DEBUG
 void SimpleMesh::loadTestData() {
-    vertices.resize(4);
+    vertices.resize(12);
     f32 verticesRaw[] = {
        // positions                        // colors           // texture coords
         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
@@ -161,11 +162,9 @@ void SimpleMesh::makeObjects() {
 }
 
 void SimpleMesh::updateUniforms(Shader& s) {
-    glm::mat4 m = glm::scale(
-        glm::translate(glm::mat4(), position),
-        scaling);
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f)); 
+    model = glm::scale(model, scaling);
+    model = glm::translate(model, position);
     s.setMat4("model", model);
 }
 
@@ -222,6 +221,7 @@ void Renderer::init(i32 width, i32 height, const char* title) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glEnable(GL_DEPTH_TEST);
     stbi_set_flip_vertically_on_load(true);
 
     shaders.push_back(Shader(
@@ -241,6 +241,8 @@ void Renderer::run() {
     f32 ptime = 0.0;
     glm::vec2 lastMousePos = mousePos;
     bool prevEscape = false;
+    cameraPos = glm::vec3(0, 0, 3.0f);
+    cameraAngle = glm::vec2(-3.141f/2.0f, 0);
 
     while(!glfwWindowShouldClose(window)) {
 
@@ -248,69 +250,63 @@ void Renderer::run() {
         f32 dt = time - ptime;
         ptime = time;
 
-        cout << "CAMERA POS: " << cameraPos.x << " " << cameraPos.y << " " << cameraPos.z << "\n";
-        cout << "CAMERA ANGLE: az=" << cameraAngle.x << " h=" << cameraAngle.y << "\n";
+        //cout << "CAMERA POS: " << cameraPos.x << " " << cameraPos.y << " " << cameraPos.z << "\n";
+        //cout << "CAMERA ANGLE: az=" << cameraAngle.x << " h=" << cameraAngle.y << "\n";
 
         glm::vec3 movement = {0, 0, 0};
         if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-            movement += glm::vec3(0, 1, 0);
+            movement += glm::vec3(0, 0, 1);
         if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
             movement += glm::vec3(-1, 0, 0);
         if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-            movement += glm::vec3(0, -1, 0);
+            movement += glm::vec3(0, 0, -1);
         if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
             movement += glm::vec3(1, 0, 0);
         if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-            movement += glm::vec3(0, 0, 1);
+            movement += glm::vec3(0, 1, 0);
         if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-            movement += glm::vec3(0, 0, -1);
+            movement += glm::vec3(0, -1, 0);
         bool escape = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
         if(escape && !prevEscape)
             toggleCursor();
         prevEscape = escape;
         
-        glm::vec3 movementReal = movement.x * glm::vec3(std::cos(cameraAngle.x), std::sin(cameraAngle.x), 0)
-            + movement.y * glm::vec3(-std::sin(cameraAngle.x), std::cos(cameraAngle.x), 0)
-            + movement.z * glm::vec3(0, 0, 1);
+        glm::vec3 movementReal = movement.z * glm::vec3(std::cos(cameraAngle.x), 0, std::sin(cameraAngle.x))
+            + movement.y * glm::vec3(0, 1, 0)
+            + movement.x * glm::vec3(-std::sin(cameraAngle.x), 0, std::cos(cameraAngle.x));
         constexpr float cameraAngleSpeed = 2.0f;
         constexpr float cameraSpeed = 0.6f;
-        movementReal *= -dt * cameraSpeed; 
+        movementReal *= dt * cameraSpeed; 
         cameraPos += movementReal;
         
-        // update movement
-        glm::vec2 mc = mousePos - lastMousePos;
-        mc.x /= width;
-        mc.y /= height;
+        if(disabledCursor) {
+            glm::vec2 mc = mousePos - lastMousePos;
+            mc.x /= width;
+            mc.y /= height;
+            cameraAngle += glm::vec2(mc.x, mc.y) * cameraAngleSpeed;
+            constexpr float PI = 3.14159268f;
+            if(cameraAngle.y > 0.5f*PI)
+                cameraAngle.y = 0.5f*PI;
+            if(cameraAngle.y < -0.5f*PI)
+                cameraAngle.y = -0.5f*PI;
+            if(cameraAngle.x > PI)
+                cameraAngle.x -= 2.0*PI;
+            if(cameraAngle.x < -PI)
+                cameraAngle.x += 2.0*PI;
+        } 
         lastMousePos = mousePos;
-        // / std::cos(cameraAngle.y)
-        cameraAngle += glm::vec2(mc.x, mc.y) * cameraAngleSpeed;
-
-        constexpr float PI = 3.14159268f;
-        if(cameraAngle.y > 0.5f*PI)
-            cameraAngle.y = 0.5f*PI;
-        if(cameraAngle.y < -0.5f*PI)
-            cameraAngle.y = -0.5f*PI;
-        if(cameraAngle.x > PI)
-            cameraAngle.x -= 2.0*PI;
-        if(cameraAngle.x < -PI)
-            cameraAngle.x += 2.0*PI;
         
         glm::mat4 view = glm::mat4(1.0f);
-        view = glm::rotate(view, cameraAngle.x, glm::vec3(0, 0, 1));
-        view = glm::rotate(view, cameraAngle.y, glm::vec3(1, 0, 0));
-        view = glm::inverse(view);
-        view = glm::translate(view, -cameraPos);
+        view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
+            std::cos(cameraAngle.x)*std::cos(cameraAngle.y),
+            std::sin(cameraAngle.y),
+            std::sin(cameraAngle.x)*std::cos(cameraAngle.y)
+        ), glm::vec3(0, 1, 0));
         
-        glm::mat4 proj = glm::perspective(70.0f/180.0f*PI, (f32)width/(f32)height, 0.1f, 100.0f);
+        glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)width/(f32)height, 0.1f, 100.0f);
     
-        glm::mat4 model = glm::mat4(1.0f);
-        //model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f)); 
-
-        glm::vec4 q = proj * view * model * glm::vec4(0.5f, 0.5f, 0.0f, 1.0f);
-        cout << q.x << " " << q.y << " " << q.z << " " << q.w << "\n";
-
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shaders[0].bind();
         shaders[0].setFloat("time", time);
@@ -320,7 +316,7 @@ void Renderer::run() {
         testmesh.updateUniforms(shaders[0]);
 
         testmesh.draw();
-        
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }

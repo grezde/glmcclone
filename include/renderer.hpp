@@ -71,7 +71,7 @@ struct Renderer {
     bool disabledCursor = true;
     glm::vec2 mousePos = {0.0f, 0.0f};
     glm::vec2 cameraAngle = { 0.0f, 0.0f };
-    glm::vec3 cameraPos = { 0, 0, 3.0f };
+    glm::vec3 cameraPos = { 10.0f, 0, 10.0f };
 
     Renderer() { instance = this; }
     void toggleCursor();
