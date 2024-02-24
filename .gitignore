@@ -1,0 +1,6 @@
+#ICON:cpp
+#DESC:Minecraft clone writen in Vulkan and C++
+.vscode
+output/*
+output/engine/*
+external/*
