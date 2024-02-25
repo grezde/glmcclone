@@ -234,6 +234,17 @@ void Renderer::init(i32 width, i32 height, const char* title) {
 
     testmesh.loadTestData();
     testmesh.makeObjects();
+    
+    meshes.push_back(SimpleMesh());
+    meshes[0].loadTestData();
+    meshes[0].makeObjects();
+    meshes[0].position = glm::vec3(2.0f, 0.0f, 0.0f);
+
+    meshes.push_back(SimpleMesh());
+    meshes[1].loadTestData();
+    meshes[1].makeObjects();
+    meshes[1].position = glm::vec3(-2.0f, 0.0f, 0.0f);
+    
 }
 
 void Renderer::processInput(f32 dt) {
@@ -241,6 +252,7 @@ void Renderer::processInput(f32 dt) {
     static constexpr float cameraSpeed = 1.0f;
     static bool prevEscape = false;
     static glm::vec2 lastMousePos = glm::vec2(0, 0);
+    static bool lastMouseFirst = true;
 
     glm::vec3 movement = {0, 0, 0};
     if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -263,11 +275,15 @@ void Renderer::processInput(f32 dt) {
     glm::vec3 movementReal = movement.z * glm::vec3(std::cos(cameraAngle.x), 0, std::sin(cameraAngle.x))
             + movement.y * glm::vec3(0, 1, 0)
             + movement.x * glm::vec3(-std::sin(cameraAngle.x), 0, std::cos(cameraAngle.x));
-    movementReal *= dt * cameraSpeed; 
+    movementReal *= dt * cameraSpeed;
     cameraPos += movementReal;
 
     if(disabledCursor) {
         glm::vec2 mc = mousePos - lastMousePos;
+        if(lastMouseFirst && (mc.x != 0.0f || mc.y != 0.0f)) {
+            lastMouseFirst = false;
+            return;
+        }
         mc.x /= width;
         mc.y /= height;
         cameraAngle += glm::vec2(mc.x, mc.y) * cameraAngleSpeed;
@@ -280,7 +296,7 @@ void Renderer::processInput(f32 dt) {
             cameraAngle.x -= 2.0*PI;
         if(cameraAngle.x < -PI)
             cameraAngle.x += 2.0*PI;
-    } 
+    }
     lastMousePos = mousePos;
 }
 
@@ -325,6 +341,11 @@ void Renderer::run() {
         shaders[0].setFloat("time", time);
         gl::bindTexture(textures[0], 0);
         shaders[0].setTexture("tex", 0);
+        
+        for(SimpleMesh& mesh : meshes) {
+            mesh.updateUniforms(shaders[0]);
+            mesh.draw();
+        }
         
         testmesh.updateUniforms(shaders[0]);
         testmesh.draw();
