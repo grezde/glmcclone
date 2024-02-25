@@ -1,16 +1,12 @@
-#include "base.hpp"
-#include <glad/glad.h>
-#include "renderer.hpp"
-#include <iostream>
-#include <stb_image.h>
+#include "game.hpp"
 
 int main(int argc, const char** argv) {
     (void) argc;
     (void) argv;
     
-    Renderer r;
-    r.init(800, 600, "Hello warld");
-    r.run();
-    r.destroy();
+    Game g;
+    g.init();
+    g.run();
+    g.destory();
     return 0;
 }

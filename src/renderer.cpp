@@ -8,8 +8,7 @@
 #include <stb_image.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/ext/matrix_transform.hpp>
-
-Renderer* Renderer::instance = nullptr;
+#include "game.hpp"
 
 u32 gl::generateVBO(void* values, u32 size) {
     u32 VBO;
@@ -177,19 +176,8 @@ void SimpleMesh::draw() {
 static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     (void) window;
     glViewport(0, 0, width, height);
-    Renderer::instance->width = width;
-    Renderer::instance->height = height;
-}
-
-static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
-    (void) window;
-    Renderer::instance->mousePos.x = xpos;
-    Renderer::instance->mousePos.y = ypos;
-}
-
-void Renderer::toggleCursor() {
-    disabledCursor = !disabledCursor;
-    glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    Game::instance->renderer.width = width;
+    Game::instance->renderer.height = height;
 }
 
 void Renderer::init(i32 width, i32 height, const char* title) {
@@ -208,8 +196,6 @@ void Renderer::init(i32 width, i32 height, const char* title) {
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, cursor_position_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         glfwTerminate();
@@ -231,128 +217,48 @@ void Renderer::init(i32 width, i32 height, const char* title) {
 
     textures.push_back(gl::textureFromFile("textures/statue.jpg", 3, 0));
     textures.push_back(gl::textureFromFile("textures/tree.png", 3, 1));
-
-    testmesh.loadTestData();
-    testmesh.makeObjects();
     
-    meshes.push_back(SimpleMesh());
-    meshes[0].loadTestData();
-    meshes[0].makeObjects();
-    meshes[0].position = glm::vec3(2.0f, 0.0f, 0.0f);
-
-    meshes.push_back(SimpleMesh());
-    meshes[1].loadTestData();
-    meshes[1].makeObjects();
-    meshes[1].position = glm::vec3(-2.0f, 0.0f, 0.0f);
-    
-}
-
-void Renderer::processInput(f32 dt) {
-    static constexpr float cameraAngleSpeed = 2.0f;
-    static constexpr float cameraSpeed = 1.0f;
-    static bool prevEscape = false;
-    static glm::vec2 lastMousePos = glm::vec2(0, 0);
-    static bool lastMouseFirst = true;
-
-    glm::vec3 movement = {0, 0, 0};
-    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        movement += glm::vec3(0, 0, 1);
-    if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        movement += glm::vec3(-1, 0, 0);
-    if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        movement += glm::vec3(0, 0, -1);
-    if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        movement += glm::vec3(1, 0, 0);
-    if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-        movement += glm::vec3(0, 1, 0);
-    if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-        movement += glm::vec3(0, -1, 0);
-    bool escape = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
-    if(escape && !prevEscape)
-        toggleCursor();
-    prevEscape = escape;
-
-    glm::vec3 movementReal = movement.z * glm::vec3(std::cos(cameraAngle.x), 0, std::sin(cameraAngle.x))
-            + movement.y * glm::vec3(0, 1, 0)
-            + movement.x * glm::vec3(-std::sin(cameraAngle.x), 0, std::cos(cameraAngle.x));
-    movementReal *= dt * cameraSpeed;
-    cameraPos += movementReal;
-
-    if(disabledCursor) {
-        glm::vec2 mc = mousePos - lastMousePos;
-        if(lastMouseFirst && (mc.x != 0.0f || mc.y != 0.0f)) {
-            lastMouseFirst = false;
-            return;
-        }
-        mc.x /= width;
-        mc.y /= height;
-        cameraAngle += glm::vec2(mc.x, mc.y) * cameraAngleSpeed;
-        constexpr float PI = 3.14159268f;
-        if(cameraAngle.y > 0.5f*PI*0.99f)
-            cameraAngle.y = 0.5f*PI*0.99f;
-        if(cameraAngle.y < -0.5f*PI*0.99f)
-            cameraAngle.y = -0.5f*PI*0.99f;
-        if(cameraAngle.x > PI)
-            cameraAngle.x -= 2.0*PI;
-        if(cameraAngle.x < -PI)
-            cameraAngle.x += 2.0*PI;
-    }
-    lastMousePos = mousePos;
-}
-
-void Renderer::run() {
-    glfwSetTime(0);
-    f32 ptime = 0.0;
-    //f32 fpst = 0.0f;
-    //u32 fpsc = 0;
+    //meshes.push_back(SimpleMesh());
+    //meshes[0].loadTestData();
+    //meshes[0].makeObjects();
+    //meshes[0].position = glm::vec3(0.0f, 0.0f, 0.0f);
+//
+    //meshes.push_back(SimpleMesh());
+    //meshes[1].loadTestData();
+    //meshes[1].makeObjects();
+    //meshes[1].position = glm::vec3(-2.0f, 0.0f, 0.0f);
     
     cameraPos = glm::vec3(0, 0, 3.0f);
     cameraAngle = glm::vec2(-3.141f/2.0f, 0);
+}
 
-    while(!glfwWindowShouldClose(window)) {
-
-        f32 time = glfwGetTime();
-        f32 dt = time - ptime;
-        ptime = time;
-        //fpst += dt;
-        //fpsc++;
-        //if(fpst > 1.0f) {
-        //    cout << fpsc/fpst << " FPS\n";
-        //    fpsc = 0;
-        //    fpst = 0.0f;
-        //}
-
-        processInput(dt);
+void Renderer::render(f32 time, f32 dt) {
+    (void) dt;
         
-        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
-            std::cos(cameraAngle.x)*std::cos(cameraAngle.y),
-            std::sin(cameraAngle.y),
-            std::sin(cameraAngle.x)*std::cos(cameraAngle.y)
-        ), glm::vec3(0, 1, 0));
-        
-        glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)width/(f32)height, 0.1f, 100.0f);
+    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
+        std::cos(cameraAngle.x)*std::cos(cameraAngle.y),
+        std::sin(cameraAngle.y),
+        std::sin(cameraAngle.x)*std::cos(cameraAngle.y)
+    ), glm::vec3(0, 1, 0));
     
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)width/(f32)height, 0.1f, 100.0f);
 
-        shaders[0].bind();
-        shaders[0].setMat4("view", view);
-        shaders[0].setMat4("proj", proj);
-        shaders[0].setFloat("time", time);
-        gl::bindTexture(textures[0], 0);
-        shaders[0].setTexture("tex", 0);
-        
-        for(SimpleMesh& mesh : meshes) {
-            mesh.updateUniforms(shaders[0]);
-            mesh.draw();
-        }
-        
-        testmesh.updateUniforms(shaders[0]);
-        testmesh.draw();
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+    shaders[0].bind();
+    shaders[0].setMat4("view", view);
+    shaders[0].setMat4("proj", proj);
+    shaders[0].setFloat("time", time);
+    gl::bindTexture(textures[0], 0);
+    shaders[0].setTexture("tex", 0);
+    
+    for(SimpleMesh& mesh : meshes) {
+        mesh.updateUniforms(shaders[0]);
+        mesh.draw();
     }
+    
+    glfwSwapBuffers(window);    
 }
 
 void Renderer::destroy() {
