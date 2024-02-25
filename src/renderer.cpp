@@ -69,23 +69,23 @@ u32 gl::linkShaders(u32 vertexShader, u32 fragmentShader) {
     return shaderProgram;
 }
 
-Texture gl::textureFromFile(const char *filename, u32 textureIndex, u32 channels) {
-    Texture t;
-    u8* data = stbi_load(filename, &t.width, &t.height, &t.channels, channels); 
+u32 gl::textureFromFile(const char *filename, u32 desiredChannels, u32 desiredTexureSlot) {
+    i32 width, height, channels;
+    u8* data = stbi_load(filename, &width, &height, &channels, desiredChannels); 
     if(data == nullptr) ERR_EXIT("Could not load image");
-    glGenTextures(1, &t.id);
-    t.index = textureIndex;
-    glActiveTexture(GL_TEXTURE0 + textureIndex);
-    glBindTexture(GL_TEXTURE_2D, t.id);
-    glTexImage2D(GL_TEXTURE_2D, 0, channels == 3 ? GL_RGB : GL_RGBA, t.width, t.height, 0, channels == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
+    u32 texture;
+    glGenTextures(1, &texture);
+    glActiveTexture(GL_TEXTURE0 + desiredTexureSlot);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, channels == 3 ? GL_RGB : GL_RGBA, width, height, 0, channels == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
     glGenerateMipmap(GL_TEXTURE_2D);
     stbi_image_free(data);
-    return t;
+    return texture;
 }
 
-void Texture::bind() {
-    glActiveTexture(index);
-    glBindTexture(GL_TEXTURE_2D, id);
+void gl::bindTexture(u32 texture, u32 slot) {
+    glActiveTexture(GL_TEXTURE0 + slot);
+    glBindTexture(GL_TEXTURE_2D, texture);
 }
 
 void Shader::bind() {
@@ -101,8 +101,8 @@ Shader::Shader(const string& vertexSource, const string& fragmentSource) {
     glDeleteShader(fragmentShader);
 }
 
-void Shader::setTexture(const char* name, const Texture& tex) {
-    glUniform1i(glGetUniformLocation(this->id, name), tex.index);
+void Shader::setTexture(const char* name, u32 slot) {
+    glUniform1i(glGetUniformLocation(this->id, name), slot);
 }
 
 void Shader::setFloat(const char* name, f32 value) {
@@ -125,17 +125,17 @@ void SimpleMesh::loadTestData() {
         0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
         0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
         -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f,    // top left 
-       // positions                        // colors           // texture coords
-        0.5f,  0.0f, 0.5f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-        0.5f, -0.0f, 0.5f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-        -0.5f, -0.0f, 0.5f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-        -0.5f,  0.0f, 0.5f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f,    // top left 
-       // positions                        // colors           // texture coords
-        0.0f, 0.5f,  0.5f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-        0.0f, 0.5f, -0.5f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-        -0.0f, 0.5f, -0.5f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-        -0.0f, 0.5f,  0.5f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f,    // top left
+        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f,    // top left
+
+        0.5f,  -0.5f+0.0f,  0.5f+0.5f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+        0.5f,  -0.5f+0.0f,  0.5f+-0.5f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+        -0.5f, -0.5f+ 0.0f, 0.5f+-0.5f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+        -0.5f, -0.5f+ 0.0f, 0.5f+ 0.5f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f,    // top left
+
+        0.5f+0.0f,  0.5f, 0.5f+ 0.5f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+        0.5f+0.0f, -0.5f, 0.5f+ 0.5f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+        0.5f+0.0f, -0.5f, 0.5f+-0.5f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+        0.5f+0.0f,  0.5f, 0.5f+-0.5f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f,    // top left
     };
     memcpy(vertices.data(), verticesRaw, sizeof(verticesRaw));
     indices = {
@@ -208,8 +208,8 @@ void Renderer::init(i32 width, i32 height, const char* title) {
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
     glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         glfwTerminate();
@@ -229,18 +229,67 @@ void Renderer::init(i32 width, i32 height, const char* title) {
         readFileString("shaders/simple.frag.glsl")
     ));
 
-    textures.push_back(gl::textureFromFile("textures/statue.jpg", 0, 3));
-    textures.push_back(gl::textureFromFile("textures/tree.png", 1, 3));
+    textures.push_back(gl::textureFromFile("textures/statue.jpg", 3, 0));
+    textures.push_back(gl::textureFromFile("textures/tree.png", 3, 1));
 
     testmesh.loadTestData();
     testmesh.makeObjects();
 }
 
+void Renderer::processInput(f32 dt) {
+    static constexpr float cameraAngleSpeed = 2.0f;
+    static constexpr float cameraSpeed = 1.0f;
+    static bool prevEscape = false;
+    static glm::vec2 lastMousePos = glm::vec2(0, 0);
+
+    glm::vec3 movement = {0, 0, 0};
+    if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        movement += glm::vec3(0, 0, 1);
+    if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        movement += glm::vec3(-1, 0, 0);
+    if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        movement += glm::vec3(0, 0, -1);
+    if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        movement += glm::vec3(1, 0, 0);
+    if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        movement += glm::vec3(0, 1, 0);
+    if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        movement += glm::vec3(0, -1, 0);
+    bool escape = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
+    if(escape && !prevEscape)
+        toggleCursor();
+    prevEscape = escape;
+
+    glm::vec3 movementReal = movement.z * glm::vec3(std::cos(cameraAngle.x), 0, std::sin(cameraAngle.x))
+            + movement.y * glm::vec3(0, 1, 0)
+            + movement.x * glm::vec3(-std::sin(cameraAngle.x), 0, std::cos(cameraAngle.x));
+    movementReal *= dt * cameraSpeed; 
+    cameraPos += movementReal;
+
+    if(disabledCursor) {
+        glm::vec2 mc = mousePos - lastMousePos;
+        mc.x /= width;
+        mc.y /= height;
+        cameraAngle += glm::vec2(mc.x, mc.y) * cameraAngleSpeed;
+        constexpr float PI = 3.14159268f;
+        if(cameraAngle.y > 0.5f*PI*0.99f)
+            cameraAngle.y = 0.5f*PI*0.99f;
+        if(cameraAngle.y < -0.5f*PI*0.99f)
+            cameraAngle.y = -0.5f*PI*0.99f;
+        if(cameraAngle.x > PI)
+            cameraAngle.x -= 2.0*PI;
+        if(cameraAngle.x < -PI)
+            cameraAngle.x += 2.0*PI;
+    } 
+    lastMousePos = mousePos;
+}
+
 void Renderer::run() {
     glfwSetTime(0);
     f32 ptime = 0.0;
-    glm::vec2 lastMousePos = mousePos;
-    bool prevEscape = false;
+    //f32 fpst = 0.0f;
+    //u32 fpsc = 0;
+    
     cameraPos = glm::vec3(0, 0, 3.0f);
     cameraAngle = glm::vec2(-3.141f/2.0f, 0);
 
@@ -249,55 +298,17 @@ void Renderer::run() {
         f32 time = glfwGetTime();
         f32 dt = time - ptime;
         ptime = time;
+        //fpst += dt;
+        //fpsc++;
+        //if(fpst > 1.0f) {
+        //    cout << fpsc/fpst << " FPS\n";
+        //    fpsc = 0;
+        //    fpst = 0.0f;
+        //}
 
-        //cout << "CAMERA POS: " << cameraPos.x << " " << cameraPos.y << " " << cameraPos.z << "\n";
-        //cout << "CAMERA ANGLE: az=" << cameraAngle.x << " h=" << cameraAngle.y << "\n";
-
-        glm::vec3 movement = {0, 0, 0};
-        if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-            movement += glm::vec3(0, 0, 1);
-        if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-            movement += glm::vec3(-1, 0, 0);
-        if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-            movement += glm::vec3(0, 0, -1);
-        if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-            movement += glm::vec3(1, 0, 0);
-        if(glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-            movement += glm::vec3(0, 1, 0);
-        if(glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-            movement += glm::vec3(0, -1, 0);
-        bool escape = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
-        if(escape && !prevEscape)
-            toggleCursor();
-        prevEscape = escape;
+        processInput(dt);
         
-        glm::vec3 movementReal = movement.z * glm::vec3(std::cos(cameraAngle.x), 0, std::sin(cameraAngle.x))
-            + movement.y * glm::vec3(0, 1, 0)
-            + movement.x * glm::vec3(-std::sin(cameraAngle.x), 0, std::cos(cameraAngle.x));
-        constexpr float cameraAngleSpeed = 2.0f;
-        constexpr float cameraSpeed = 0.6f;
-        movementReal *= dt * cameraSpeed; 
-        cameraPos += movementReal;
-        
-        if(disabledCursor) {
-            glm::vec2 mc = mousePos - lastMousePos;
-            mc.x /= width;
-            mc.y /= height;
-            cameraAngle += glm::vec2(mc.x, mc.y) * cameraAngleSpeed;
-            constexpr float PI = 3.14159268f;
-            if(cameraAngle.y > 0.5f*PI)
-                cameraAngle.y = 0.5f*PI;
-            if(cameraAngle.y < -0.5f*PI)
-                cameraAngle.y = -0.5f*PI;
-            if(cameraAngle.x > PI)
-                cameraAngle.x -= 2.0*PI;
-            if(cameraAngle.x < -PI)
-                cameraAngle.x += 2.0*PI;
-        } 
-        lastMousePos = mousePos;
-        
-        glm::mat4 view = glm::mat4(1.0f);
-        view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
+        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
             std::cos(cameraAngle.x)*std::cos(cameraAngle.y),
             std::sin(cameraAngle.y),
             std::sin(cameraAngle.x)*std::cos(cameraAngle.y)
@@ -309,12 +320,13 @@ void Renderer::run() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         shaders[0].bind();
-        shaders[0].setFloat("time", time);
-        shaders[0].setTexture("tex", textures[1]);
         shaders[0].setMat4("view", view);
         shaders[0].setMat4("proj", proj);
+        shaders[0].setFloat("time", time);
+        gl::bindTexture(textures[0], 0);
+        shaders[0].setTexture("tex", 0);
+        
         testmesh.updateUniforms(shaders[0]);
-
         testmesh.draw();
 
         glfwSwapBuffers(window);

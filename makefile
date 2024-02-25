@@ -6,7 +6,7 @@ CPPC=g++ -std=c++20
 CC=gcc
 GLSLC=glslc
 DEBUGGER=gf2
-RUNNER=prime-run
+RUNNER=
 
 folders=$(patsubst src%,output%,$(shell find src -type d))
 cppobjects=$(patsubst src/%.cpp,output/%.o,$(shell find src -name "*.cpp"))

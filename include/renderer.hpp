@@ -5,20 +5,11 @@
 #include <glm/vec2.hpp>
 #include <glm/mat4x4.hpp>
 
-struct Texture {
-    u32 id;
-    u32 index;
-    i32 width;
-    i32 height;
-    i32 channels;
-    void bind();
-};
-
 struct Shader {
     u32 id;
     Shader(const string& vertexSource, const string& fragmentSource);
     void bind();
-    void setTexture(const char* name, const Texture& texture);
+    void setTexture(const char* name, u32 slot);
     void setFloat(const char* name, f32 value);
     void setVec3(const char* name, const glm::vec3& value);
     void setMat4(const char* name, const glm::mat4& value);
@@ -56,7 +47,8 @@ namespace gl {
     u32 generateVAO();
     //u32 addAttribToVAO(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
     void addAttribToVAO(u32 index, i32 size, u32 type, i32 stride, u32 offset);
-    Texture textureFromFile(const char* filename, u32 textureIndex = 0, u32 channels = 3);
+    u32 textureFromFile(const char* filename, u32 channels = 3, u32 desiredTexureSlot = 0);
+    void bindTexture(u32 texture, u32 slot);
 };
 
 struct Renderer {
@@ -66,7 +58,8 @@ struct Renderer {
     const char* title;
     static Renderer* instance;
     vector<Shader> shaders;
-    vector<Texture> textures;
+    vector<u32> textures;
+    vector<SimpleMesh> meshes;
     SimpleMesh testmesh;
     bool disabledCursor = true;
     glm::vec2 mousePos = {0.0f, 0.0f};
@@ -75,6 +68,7 @@ struct Renderer {
 
     Renderer() { instance = this; }
     void toggleCursor();
+    void processInput(f32 dt);
 
     void init(i32 width, i32 height, const char* title);
     void run();
