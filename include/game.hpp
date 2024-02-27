@@ -11,9 +11,16 @@ struct InputHandler {
     void processInput(f32 dt);
 };
 
+struct BlockRenderProps {
+    typedef u8 textureID;
+    textureID faces[6]; // east, south, west, north, up, down
+    u8 solidity; // to be checked later 
+};
+
 struct Chunk {
     static constexpr u32 CHUNKSIZE = 32;
-    typedef u8 blockID;
+    static vector<BlockRenderProps> props;
+    typedef u8 blockID; 
     blockID blocks[CHUNKSIZE*CHUNKSIZE*CHUNKSIZE];
 
     void makeSimpleMesh(SimpleMesh& mesh);
@@ -23,7 +30,7 @@ struct Game {
     Renderer renderer;
     InputHandler input;
     static Game* instance;
-    bool printFPS = true;
+    bool printFPS = false;
     Chunk testChunk;
 
     Game() { instance = this; }

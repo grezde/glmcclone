@@ -1,5 +1,8 @@
 #include "game.hpp"
 #include "renderer.hpp"
+#include <cstring>
+#include <stb_image.h>
+#include <stb_image_write.h>
 
 Game* Game::instance = nullptr;
 
@@ -80,12 +83,46 @@ void InputHandler::processInput(f32 dt) {
     lastMousePos = mousePos;
 }
 
+vector<BlockRenderProps> Chunk::props = {
+    // 0 is the missing texture
+    // air
+    { 0, 0, 0, 0, 0, 0, 0 },
+    // cobblestone 
+    { 1, 1, 1, 1, 1, 1, 127 },
+    // dirt
+    { 2, 2, 2, 2, 2, 2, 127 },
+    // grass
+    { 3, 3, 3, 3, 4, 2, 127 },
+    // sand
+    { 5, 5, 5, 5, 5, 5, 127 },
+    // log
+    { 6, 6, 6, 6, 7, 7, 127 },
+    // planks
+    { 8, 8, 8, 8, 8, 8, 127 },
+    // stone
+    { 9, 9, 9, 9, 9, 9, 127 },
+};
+
 void Chunk::makeSimpleMesh(SimpleMesh& mesh) {
+    for(u32 x=0; x<CHUNKSIZE; x++)
+    for(u32 z=0; z<CHUNKSIZE; z++)
+    for(u32 y=0; y<CHUNKSIZE; y++) {
+        u32 i = x*CHUNKSIZE*CHUNKSIZE + z*CHUNKSIZE + y;
+        f32 r = (f32)rand()/(f32)RAND_MAX;
+        if(r > (f32)y/(f32)CHUNKSIZE)
+            blocks[i] = 1;
+        else
+            blocks[i] = 0;
+    };
+
     //mesh.vertices, mesh.indices;
     for(u32 x=0; x<CHUNKSIZE; x++)
     for(u32 z=0; z<CHUNKSIZE; z++)
     for(u32 y=0; y<CHUNKSIZE; y++) {
         u32 i = x*CHUNKSIZE*CHUNKSIZE + z*CHUNKSIZE + y;
+        if(blocks[i] == 0)
+            continue;
+        glm::vec4 textureBounds = {0, 0, 1, 1};
         // blocks[i]; -> we don't care tho
         u32 cstart = mesh.vertices.size();
         mesh.vertices.push_back({ { x,   y,   z   }, { 1, 1, 1 }, { 0, 0 } }); //0
@@ -100,8 +137,10 @@ void Chunk::makeSimpleMesh(SimpleMesh& mesh) {
         mesh.vertices.push_back({ { x+1, y+1, z+1 }, { 1, 1, 1 }, { 1, 0 } }); //9 copy of 5
         mesh.vertices.push_back({ { x,   y,   z+1 }, { 1, 1, 1 }, { 0, 1 } }); //10 copy of 6
         mesh.vertices.push_back({ { x,   y+1, z+1 }, { 1, 1, 1 }, { 0, 0 } }); //11 copy of 7
+        BlockRenderProps& brp = Chunk::props[blocks[i]];
+        for(u32 j=cstart; j<mesh.vertices.size(); j++)
+            mesh.vertices[j].texCoords = glm::vec2(0, 0)/8.0f + glm::vec2(1,1) - (glm::vec2(1, 1) - mesh.vertices[j].texCoords)/8.0f;
 
-        
         mesh.indices.push_back(cstart+0);
         mesh.indices.push_back(cstart+1);
         mesh.indices.push_back(cstart+2);
@@ -151,12 +190,13 @@ void Chunk::makeSimpleMesh(SimpleMesh& mesh) {
         mesh.indices.push_back(cstart+10);
         mesh.indices.push_back(cstart+8);
 
-    }
+    };
 }
 
 void Game::init() {
     renderer.init(800, 600, "Hello warld");
     input.init();
+    renderer.makeAtlas();
     renderer.meshes.push_back(SimpleMesh());
     testChunk.makeSimpleMesh(renderer.meshes.back());
     renderer.meshes.back().makeObjects();

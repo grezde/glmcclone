@@ -14,7 +14,8 @@ namespace gl {
     u32 generateVAO();
     //u32 addAttribToVAO(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
     void addAttribToVAO(u32 index, i32 size, u32 type, i32 stride, u32 offset);
-    u32 textureFromFile(const char* filename, u32 channels = 3, u32 desiredTexureSlot = 0);
+    u32 textureFromFile(const char* filename, u32 channels = 4);
+    u32 textureFromMemory(u8* data, u32 width, u32 height, u32 channels = 4);
     void bindTexture(u32 texture, u32 slot);
 };
 
@@ -65,6 +66,7 @@ struct Renderer {
     glm::vec2 cameraAngle = { 0.0f, 0.0f };
     glm::vec3 cameraPos = { 10.0f, 0, 10.0f };
 
+    void makeAtlas();
     void init(i32 width, i32 height, const char* title);
     void render(f32 time, f32 dt);
     void destroy();

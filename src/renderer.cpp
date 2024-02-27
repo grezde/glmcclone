@@ -6,6 +6,7 @@
 #include <glm/ext/matrix_projection.hpp>
 #include <glm/ext/vector_float3.hpp>
 #include <stb_image.h>
+#include <stb_image_write.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/ext/matrix_transform.hpp>
 #include "game.hpp"
@@ -68,17 +69,25 @@ u32 gl::linkShaders(u32 vertexShader, u32 fragmentShader) {
     return shaderProgram;
 }
 
-u32 gl::textureFromFile(const char *filename, u32 desiredChannels, u32 desiredTexureSlot) {
+u32 gl::textureFromFile(const char *filename, u32 desiredChannels) {
     i32 width, height, channels;
     u8* data = stbi_load(filename, &width, &height, &channels, desiredChannels); 
     if(data == nullptr) ERR_EXIT("Could not load image");
+    u32 texture = gl::textureFromMemory(data, width, height, desiredChannels);
+    stbi_image_free(data);
+    return texture;
+}
+
+u32 gl::textureFromMemory(u8* data, u32 width, u32 height, u32 channels) {
     u32 texture;
     glGenTextures(1, &texture);
-    glActiveTexture(GL_TEXTURE0 + desiredTexureSlot);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, channels == 3 ? GL_RGB : GL_RGBA, width, height, 0, channels == 3 ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-    stbi_image_free(data);
+    //glGenerateMipmap(GL_TEXTURE_2D);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     return texture;
 }
 
@@ -180,6 +189,45 @@ static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     Game::instance->renderer.height = height;
 }
 
+void Renderer::makeAtlas() {
+    // u32 is the color
+    static constexpr u32 TILE = 16;
+    u32 width = 8, height=8;
+    u32* data = (u32*)malloc(4*TILE*TILE*width*height);
+    memset(data, 0, 4*TILE*TILE*width*height);
+    for(u32 y=0; y<TILE; y++) for(u32 x=0; x<TILE; x++) {
+        u32 mag = (x < 8) ^ (y < 8);
+        data[y*TILE*width+x] = mag ? 0xFFFF00FF : 0xFF000000;
+    }
+    for(u32 i=1; i<10; i++) {
+        char filename[30];
+        sprintf(filename, "textures/%u.png", i);
+        i32 imageWidth, imageHeight, imageChannels;
+        u8* newdata = stbi_load(filename, &imageWidth, &imageHeight, &imageChannels, 4);
+        if(data == nullptr) ERR_EXIT("Could not load image " << i);
+        cout << filename << ": " << imageChannels << " " << imageWidth << " " << imageHeight << "\n";
+        if(imageChannels != 4 || imageWidth != TILE || imageHeight != TILE)
+            ERR_EXIT("Image not in apropriate format " << i);
+        for(u32 y=0; y < TILE; y++)
+        for(u32 x=0; x < TILE; x++) {
+            data[((i/width)*TILE + y)*TILE*width + (i%width)*TILE + x] = ((u32*)newdata)[TILE*y+x];
+        };
+        stbi_image_free(newdata);
+    }
+    #ifdef DEBUG
+        stbi_write_png("output/atlas.png", TILE*width, TILE*height, 4, data, TILE*width*4);
+    #endif
+    // Finally we must flip everything in acordance to OpenGL
+    for(u32 y=0; y<TILE*height/2; y++)
+    for(u32 x=0; x<TILE*width; x++) {
+        u32 temp = data[y*TILE*width+x];
+        data[y*TILE*width+x] = data[(height*TILE-y-1)*TILE*width+x];
+        data[(height*TILE-y-1)*TILE*width+x] = temp;
+    };
+    textures.push_back(gl::textureFromMemory((u8*)data, width*TILE, height*TILE, 4));
+    free(data);
+}
+
 void Renderer::init(i32 width, i32 height, const char* title) {
     this->width = width;
     this->height = height;
@@ -205,29 +253,30 @@ void Renderer::init(i32 width, i32 height, const char* title) {
     glViewport(0, 0, width, height);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glEnable(GL_DEPTH_TEST);
-    stbi_set_flip_vertically_on_load(true);
+    //glEnable(GL_BLEND);
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     shaders.push_back(Shader(
         readFileString("shaders/simple.vert.glsl"), 
         readFileString("shaders/simple.frag.glsl")
     ));
 
-    textures.push_back(gl::textureFromFile("textures/statue.jpg", 3, 0));
-    textures.push_back(gl::textureFromFile("textures/tree.png", 3, 1));
+    //textures.push_back(gl::textureFromFile("textures/statue.jpg", 3, 0));
+    //textures.push_back(gl::textureFromFile("textures/tree.png", 3, 1));
     
     //meshes.push_back(SimpleMesh());
     //meshes[0].loadTestData();
     //meshes[0].makeObjects();
     //meshes[0].position = glm::vec3(0.0f, 0.0f, 0.0f);
-//
+    //
     //meshes.push_back(SimpleMesh());
     //meshes[1].loadTestData();
     //meshes[1].makeObjects();
     //meshes[1].position = glm::vec3(-2.0f, 0.0f, 0.0f);
-    
+
     cameraPos = glm::vec3(0, 0, 3.0f);
     cameraAngle = glm::vec2(-3.141f/2.0f, 0);
 }

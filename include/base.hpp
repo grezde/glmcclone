@@ -27,9 +27,9 @@ using std::ostream;
 using std::map;
 
 #ifdef DEBUG
-    inline string removeSourceBeggining(string filename) { return filename.substr(42); }
+    inline string removeSourceBeggining(string filename) { return filename.substr(0); }
     #define ERR_EXIT(x) do { \
-            cerr << "FATAL ERROR: " << x << "\nAt " << removeSourceBeggining(__FILE__) << ":" << __LINE__ << "in " << __PRETTY_FUNCTION__ << "\n";\
+            cerr << "FATAL ERROR: " << x << "\nAt " << removeSourceBeggining(__FILE__) << ":" << __LINE__ << " in " << __PRETTY_FUNCTION__ << "\n";\
             exit(1);\
     } while(0)
 #else
