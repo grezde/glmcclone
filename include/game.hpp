@@ -23,6 +23,8 @@ struct Chunk {
     typedef u8 blockID; 
     blockID blocks[CHUNKSIZE*CHUNKSIZE*CHUNKSIZE];
 
+    static u32 indexOf(glm::ivec3 inChunkCoords);
+    static bool inBounds(glm::ivec3 inChunkCoords);
     void makeSimpleMesh(SimpleMesh& mesh);
 };
 
