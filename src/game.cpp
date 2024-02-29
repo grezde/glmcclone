@@ -131,9 +131,9 @@ glm::ivec3 directionVector[DIRECTION_COUNT+1] = {
 
 bool Chunk::inBounds(glm::ivec3 inChunkCoords) {
     return !(
-        inChunkCoords.x < 0 || inChunkCoords.x >= CHUNKSIZE || 
-        inChunkCoords.y < 0 || inChunkCoords.y >= CHUNKSIZE ||
-        inChunkCoords.z < 0 || inChunkCoords.z >= CHUNKSIZE
+        inChunkCoords.x < 0 || inChunkCoords.x >= (i32)CHUNKSIZE || 
+        inChunkCoords.y < 0 || inChunkCoords.y >= (i32)CHUNKSIZE ||
+        inChunkCoords.z < 0 || inChunkCoords.z >= (i32)CHUNKSIZE
     );
 }
 
@@ -219,6 +219,29 @@ void Chunk::makeSimpleMesh(SimpleMesh& mesh) {
                 vertex.position += pos;
                 mesh.vertices.push_back(vertex);
             }
+
+            // Ambient oclusion demo
+            // TODO: the ambient oclusion sucks
+            // for each vertex we check the block on the sides on color it less the more neighbours it has
+            for(u32 faceVertex=0; faceVertex<4; faceVertex++) {
+                SimpleVertex& vertex = mesh.vertices[mesh.vertices.size()-4+faceVertex];
+                glm::vec3 g = vertex.position - glm::vec3(pos);
+                g = glm::vec3(-1, -1, -1) + 2.0f*g;
+                // g gives us one of the 8 corners, 1or -1 for each axis
+                u32 neighbours = 0;
+                glm::vec3 ns[7] = { g, {g.x, g.y, 0}, {g.x, 0, g.z}, {0, g.y, g.z}, {g.x, 0, 0}, {0,g.y,0}, {0,0,g.z} };
+                for(u32 nsi=0; nsi<7; nsi++) {
+                    glm::ivec3 nsint = ns[nsi];
+                    //cout << "{" << nsint.x << " " << nsint.y << " " << nsint.z << "} ";
+                    nsint += pos;
+                    if(inBounds(nsint)) {
+                        if(blocks[indexOf(nsint)] != 0)
+                            neighbours++;
+                    }
+                }
+                vertex.color *= 1.0f - neighbours * 0.07f;
+            }
+
             mesh.indices.push_back(mesh.vertices.size()-4 + 0);
             mesh.indices.push_back(mesh.vertices.size()-4 + 1);
             mesh.indices.push_back(mesh.vertices.size()-4 + 3);
@@ -226,79 +249,6 @@ void Chunk::makeSimpleMesh(SimpleMesh& mesh) {
             mesh.indices.push_back(mesh.vertices.size()-4 + 1);
             mesh.indices.push_back(mesh.vertices.size()-4 + 2);
         }
-        
-        // glm::vec4 textureBounds = {0, 0, 1, 1};
-        // // blocks[i]; -> we don't care tho
-        // u32 cstart = mesh.vertices.size();
-        // mesh.vertices.push_back({ { x,   y,   z   }, { 1, 1, 1 }, { 0, 0 } }); //0
-        // mesh.vertices.push_back({ { x+1, y,   z   }, { 1, 1, 1 }, { 1, 0 } }); //1
-        // mesh.vertices.push_back({ { x,   y+1, z   }, { 1, 1, 1 }, { 0, 1 } }); //2
-        // mesh.vertices.push_back({ { x+1, y+1, z   }, { 1, 1, 1 }, { 1, 1 } }); //3
-        // mesh.vertices.push_back({ { x+1, y,   z+1 }, { 1, 1, 1 }, { 0, 0 } }); //4
-        // mesh.vertices.push_back({ { x+1, y+1, z+1 }, { 1, 1, 1 }, { 0, 1 } }); //5
-        // mesh.vertices.push_back({ { x,   y,   z+1 }, { 1, 1, 1 }, { 1, 0 } }); //6
-        // mesh.vertices.push_back({ { x,   y+1, z+1 }, { 1, 1, 1 }, { 1, 1 } }); //7
-        // mesh.vertices.push_back({ { x+1, y,   z+1 }, { 1, 1, 1 }, { 1, 1 } }); //8 copy of 4
-        // mesh.vertices.push_back({ { x+1, y+1, z+1 }, { 1, 1, 1 }, { 1, 0 } }); //9 copy of 5
-        // mesh.vertices.push_back({ { x,   y,   z+1 }, { 1, 1, 1 }, { 0, 1 } }); //10 copy of 6
-        // mesh.vertices.push_back({ { x,   y+1, z+1 }, { 1, 1, 1 }, { 0, 0 } }); //11 copy of 7
-        // BlockRenderProps& brp = Chunk::props[blocks[i]];
-        // for(u32 j=cstart; j<mesh.vertices.size(); j++)
-        //     //mesh.vertices[j].texCoords = glm::vec2(0, 0)/8.0f + (glm::vec2(1, 1) - mesh.vertices[j].texCoords)/8.0f;
-        //     mesh.vertices[j].texCoords = glm::vec2(1, 7-0)/8.0f + mesh.vertices[j].texCoords/8.0f;
-        // for(u32 j=cstart; j<mesh.vertices.size(); j++)
-        //     //mesh.vertices[j].texCoords = glm::vec2(0, 0)/8.0f + glm::vec2(1,1) - (glm::vec2(1, 1) - mesh.vertices[j].texCoords)/8.0f;
-        //     cout << mesh.vertices[j].texCoords.x << " " << mesh.vertices[j].texCoords.y << "\n";
-
-
-        // mesh.indices.push_back(cstart+0);
-        // mesh.indices.push_back(cstart+1);
-        // mesh.indices.push_back(cstart+2);
-        // mesh.indices.push_back(cstart+2);
-        // mesh.indices.push_back(cstart+1);
-        // mesh.indices.push_back(cstart+3);
-
-        // mesh.indices.push_back(cstart+1);
-        // mesh.indices.push_back(cstart+3);
-        // mesh.indices.push_back(cstart+4);
-        // mesh.indices.push_back(cstart+4);
-        // mesh.indices.push_back(cstart+5);
-        // mesh.indices.push_back(cstart+3);
-
-        // mesh.indices.push_back(cstart+4);
-        // mesh.indices.push_back(cstart+6);
-        // mesh.indices.push_back(cstart+7);
-        // mesh.indices.push_back(cstart+7);
-        // mesh.indices.push_back(cstart+5);
-        // mesh.indices.push_back(cstart+4);
-
-        // mesh.indices.push_back(cstart+6);
-        // mesh.indices.push_back(cstart+7);
-        // mesh.indices.push_back(cstart+0);
-        // mesh.indices.push_back(cstart+0);
-        // mesh.indices.push_back(cstart+2);
-        // mesh.indices.push_back(cstart+7);
-        
-        // mesh.indices.push_back(cstart+6);
-        // mesh.indices.push_back(cstart+7);
-        // mesh.indices.push_back(cstart+0);
-        // mesh.indices.push_back(cstart+0);
-        // mesh.indices.push_back(cstart+2);
-        // mesh.indices.push_back(cstart+7);
-
-        // mesh.indices.push_back(cstart+2);
-        // mesh.indices.push_back(cstart+3);
-        // mesh.indices.push_back(cstart+9);
-        // mesh.indices.push_back(cstart+2);
-        // mesh.indices.push_back(cstart+11);
-        // mesh.indices.push_back(cstart+9);
-
-        // mesh.indices.push_back(cstart+0);
-        // mesh.indices.push_back(cstart+1);
-        // mesh.indices.push_back(cstart+8);
-        // mesh.indices.push_back(cstart+0);
-        // mesh.indices.push_back(cstart+10);
-        // mesh.indices.push_back(cstart+8);
 
     };
 }

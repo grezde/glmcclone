@@ -236,6 +236,7 @@ void Renderer::init(i32 width, i32 height, const char* title) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  
+    //glfwWindowHint(GLFW_SAMPLES, 4);
     GLFWwindow* window = glfwCreateWindow(width, height, title, nullptr, nullptr);
     this->window = window;
     if(window == nullptr) {
@@ -249,15 +250,16 @@ void Renderer::init(i32 width, i32 height, const char* title) {
         glfwTerminate();
         ERR_EXIT("GLAD failed to load OpenGL functions");
     }
-    
+
     glViewport(0, 0, width, height);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glEnable(GL_DEPTH_TEST);
-    //glEnable(GL_BLEND);
-    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT); 
+    glFrontFace(GL_CW);
+    //glEnable(GL_MULTISAMPLE);  
+
 
     shaders.push_back(Shader(
         readFileString("shaders/simple.vert.glsl"), 
@@ -277,7 +279,7 @@ void Renderer::init(i32 width, i32 height, const char* title) {
     //meshes[1].makeObjects();
     //meshes[1].position = glm::vec3(-2.0f, 0.0f, 0.0f);
 
-    cameraPos = glm::vec3(0, 0, 3.0f);
+    cameraPos = glm::vec3(-1.0f, 0, 3.0f);
     cameraAngle = glm::vec2(-3.141f/2.0f, 0);
 }
 

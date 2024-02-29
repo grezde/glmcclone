@@ -16,6 +16,9 @@ shaders=$(patsubst shaders/%.glsl,output/%.spv,$(shell find shaders -name "*.gls
 ifndef RELEASE
 	COMPFLAGS+= -ggdb -DDEBUG
 	LINKFLAGS+= -ggdb
+else
+	COMPFLAGS+= -O3
+	LINKFLAGS+= -O3
 endif
 
 # main does not have header file
