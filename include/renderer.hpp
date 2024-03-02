@@ -9,20 +9,21 @@
 namespace gl {
     u32 compileShader(const string& shaderCode, u16 shaderType);
     u32 linkShaders(u32 vertexShader, u32 fragmentShader);
+    u32 makeProgram(const string& vertexSource, const string& fragmentSource);
+
     u32 generateVBO(void* values, u32 size);
     u32 generateEBO(const vector<u32>& values);
     u32 generateVAO();
-    //u32 addAttribToVAO(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void *pointer);
     void addAttribToVAO(u32 index, i32 size, u32 type, i32 stride, u32 offset);
+
     u32 textureFromFile(const char* filename, u32 channels = 4);
     u32 textureFromMemory(u8* data, u32 width, u32 height, u32 channels = 4);
     void bindTexture(u32 texture, u32 slot);
 };
 
-struct Shader {
-    u32 id;
-    Shader(const string& vertexSource, const string& fragmentSource);
-    void bind();
+namespace shader {
+    extern u32 currentShader;
+    void bind(u32 shader);
     void setTexture(const char* name, u32 slot);
     void setFloat(const char* name, f32 value);
     void setVec3(const char* name, const glm::vec3& value);
@@ -45,11 +46,8 @@ struct SimpleMesh {
     //glm::vec3 rotation;
     glm::vec3 scaling = { 1, 1, 1 };
 
-#ifdef DEBUG
-    void loadTestData();
-#endif
     void makeObjects();
-    void updateUniforms(Shader& s);
+    void updateUniforms();
     void draw();
 
 };
@@ -57,10 +55,9 @@ struct SimpleMesh {
 // Renderer implementation
 struct Renderer {
     GLFWwindow* window;
-    i32 width;
-    i32 height;
+    i32 width, height;
     const char* title;
-    vector<Shader> shaders;
+    vector<u32> shaders;
     vector<u32> textures;
     vector<SimpleMesh> meshes;
     glm::vec2 cameraAngle = { 0.0f, 0.0f };
@@ -68,7 +65,7 @@ struct Renderer {
 
     void makeAtlas();
     void init(i32 width, i32 height, const char* title);
-    void render(f32 time, f32 dt);
+    void render();
     void destroy();
 
 };

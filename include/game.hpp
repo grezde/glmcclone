@@ -28,11 +28,24 @@ struct Chunk {
     void makeSimpleMesh(SimpleMesh& mesh);
 };
 
+struct WorldChunk {
+    glm::ivec3 coords;
+    Chunk chunk;
+    SimpleMesh mesh;
+};
+
+struct World {
+    vector<WorldChunk> chunks;
+    void init();
+    void draw();
+};
+
 struct Game {
     Renderer renderer;
     InputHandler input;
     static Game* instance;
-    bool printFPS = false;
+    bool printFPS;
+    World testWorld;
     Chunk testChunk;
 
     Game() { instance = this; }

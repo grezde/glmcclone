@@ -253,11 +253,21 @@ void Chunk::makeSimpleMesh(SimpleMesh& mesh) {
     };
 }
 
+void World::init() {
+
+}
+
+void World::draw() {
+    
+}
+
 void Game::init() {
+    printFPS = false;
     renderer.init(800, 600, "Hello warld");
     input.init();
     input.toggleCursor();
     renderer.makeAtlas();
+    testWorld.init();
     renderer.meshes.push_back(SimpleMesh());
     testChunk.makeSimpleMesh(renderer.meshes.back());
     renderer.meshes.back().makeObjects();
@@ -284,7 +294,7 @@ void Game::run() {
         }
 
         input.processInput(dt);
-        renderer.render(time, dt);
+        renderer.render();
         glfwPollEvents();
     }
 

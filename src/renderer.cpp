@@ -11,6 +11,8 @@
 #include <glm/ext/matrix_transform.hpp>
 #include "game.hpp"
 
+u32 shader::currentShader = 0;
+
 u32 gl::generateVBO(void* values, u32 size) {
     u32 VBO;
     glGenBuffers(1, &VBO);
@@ -96,68 +98,36 @@ void gl::bindTexture(u32 texture, u32 slot) {
     glBindTexture(GL_TEXTURE_2D, texture);
 }
 
-void Shader::bind() {
-    glUseProgram(id);
+void shader::bind(u32 shader) {
+    currentShader = shader;
+    glUseProgram(shader);
 }
 
-Shader::Shader(const string& vertexSource, const string& fragmentSource) {
+u32 gl::makeProgram(const string& vertexSource, const string& fragmentSource) {
     using namespace gl;
     u32 vertexShader = compileShader(vertexSource, GL_VERTEX_SHADER);
     u32 fragmentShader = compileShader(fragmentSource, GL_FRAGMENT_SHADER);
-    id = linkShaders(vertexShader, fragmentShader);
+    u32 id = linkShaders(vertexShader, fragmentShader);
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+    return id;
 }
 
-void Shader::setTexture(const char* name, u32 slot) {
-    glUniform1i(glGetUniformLocation(this->id, name), slot);
+void shader::setTexture(const char* name, u32 slot) {
+    glUniform1i(glGetUniformLocation(currentShader, name), slot);
 }
 
-void Shader::setFloat(const char* name, f32 value) {
-    glUniform1f(glGetUniformLocation(this->id, name), value);
+void shader::setFloat(const char* name, f32 value) {
+    glUniform1f(glGetUniformLocation(currentShader, name), value);
 }
 
-void Shader::setVec3(const char* name, const glm::vec3& value) {
-    glUniform3fv(glGetUniformLocation(this->id, name), 1, glm::value_ptr(value));   
+void shader::setVec3(const char* name, const glm::vec3& value) {
+    glUniform3fv(glGetUniformLocation(currentShader, name), 1, glm::value_ptr(value));   
 }
 
-void Shader::setMat4(const char* name, const glm::mat4& value) {
-    glUniformMatrix4fv(glGetUniformLocation(this->id, name), 1, GL_FALSE, glm::value_ptr(value));
+void shader::setMat4(const char* name, const glm::mat4& value) {
+    glUniformMatrix4fv(glGetUniformLocation(currentShader, name), 1, GL_FALSE, glm::value_ptr(value));
 }
-
-#ifdef DEBUG
-void SimpleMesh::loadTestData() {
-    vertices.resize(12);
-    f32 verticesRaw[] = {
-       // positions                        // colors           // texture coords
-        0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-        0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-        -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-        -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f,    // top left
-
-        0.5f,  -0.5f+0.0f,  0.5f+0.5f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-        0.5f,  -0.5f+0.0f,  0.5f+-0.5f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-        -0.5f, -0.5f+ 0.0f, 0.5f+-0.5f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-        -0.5f, -0.5f+ 0.0f, 0.5f+ 0.5f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f,    // top left
-
-        0.5f+0.0f,  0.5f, 0.5f+ 0.5f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-        0.5f+0.0f, -0.5f, 0.5f+ 0.5f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-        0.5f+0.0f, -0.5f, 0.5f+-0.5f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-        0.5f+0.0f,  0.5f, 0.5f+-0.5f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f,    // top left
-    };
-    memcpy(vertices.data(), verticesRaw, sizeof(verticesRaw));
-    indices = {
-        0, 1, 3,
-        1, 2, 3,
-        
-        0+4, 1+4, 3+4,
-        1+4, 2+4, 3+4,
-
-        0+8, 1+8, 3+8,
-        1+8, 2+8, 3+8,
-    };
-}
-#endif
 
 void SimpleMesh::makeObjects() {
     using namespace gl;
@@ -169,11 +139,11 @@ void SimpleMesh::makeObjects() {
     EBO = generateEBO(indices);
 }
 
-void SimpleMesh::updateUniforms(Shader& s) {
+void SimpleMesh::updateUniforms() {
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::scale(model, scaling);
     model = glm::translate(model, position);
-    s.setMat4("model", model);
+    shader::setMat4("model", model);
 }
 
 void SimpleMesh::draw() {
@@ -261,31 +231,21 @@ void Renderer::init(i32 width, i32 height, const char* title) {
     //glEnable(GL_MULTISAMPLE);  
 
 
-    shaders.push_back(Shader(
+    shaders.push_back(gl::makeProgram(
         readFileString("shaders/simple.vert.glsl"), 
         readFileString("shaders/simple.frag.glsl")
     ));
-
-    //textures.push_back(gl::textureFromFile("textures/statue.jpg", 3, 0));
-    //textures.push_back(gl::textureFromFile("textures/tree.png", 3, 1));
-    
-    //meshes.push_back(SimpleMesh());
-    //meshes[0].loadTestData();
-    //meshes[0].makeObjects();
-    //meshes[0].position = glm::vec3(0.0f, 0.0f, 0.0f);
-    //
-    //meshes.push_back(SimpleMesh());
-    //meshes[1].loadTestData();
-    //meshes[1].makeObjects();
-    //meshes[1].position = glm::vec3(-2.0f, 0.0f, 0.0f);
+    shader::bind(shaders[0]);
 
     cameraPos = glm::vec3(-1.0f, 0, 3.0f);
     cameraAngle = glm::vec2(-3.141f/2.0f, 0);
 }
 
-void Renderer::render(f32 time, f32 dt) {
-    (void) dt;
+void Renderer::render() {
         
+    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
     glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
         std::cos(cameraAngle.x)*std::cos(cameraAngle.y),
         std::sin(cameraAngle.y),
@@ -294,18 +254,14 @@ void Renderer::render(f32 time, f32 dt) {
     
     glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)width/(f32)height, 0.1f, 100.0f);
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    shaders[0].bind();
-    shaders[0].setMat4("view", view);
-    shaders[0].setMat4("proj", proj);
-    shaders[0].setFloat("time", time);
+    shader::bind(shaders[0]);
+    shader::setMat4("view", view);
+    shader::setMat4("proj", proj);
     gl::bindTexture(textures[0], 0);
-    shaders[0].setTexture("tex", 0);
+    shader::setTexture("tex", 0);
     
     for(SimpleMesh& mesh : meshes) {
-        mesh.updateUniforms(shaders[0]);
+        mesh.updateUniforms();
         mesh.draw();
     }
     
