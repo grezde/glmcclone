@@ -1,6 +1,7 @@
 #pragma once
 #include <iostream>
 #include <ostream>
+#include <system_error>
 #include <vector>
 #include <map>
 
@@ -38,3 +39,10 @@ using std::map;
 
 vector<u8> readFileBytes(const char* filename);
 string readFileString(const char* filename);
+bool fileExists(const char* filename);
+
+struct FileEntry {
+    bool isDir;
+    string name;
+};
+vector<FileEntry> readFolder(const char* name);

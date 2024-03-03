@@ -232,8 +232,8 @@ void Renderer::init(i32 width, i32 height, const char* title) {
 
 
     shaders.push_back(gl::makeProgram(
-        readFileString("shaders/simple.vert.glsl"), 
-        readFileString("shaders/simple.frag.glsl")
+        readFileString("assets/shaders/simple.vert.glsl"), 
+        readFileString("assets/shaders/simple.frag.glsl")
     ));
     shader::bind(shaders[0]);
 

@@ -10,7 +10,7 @@ RUNNER=
 
 folders=$(patsubst src%,output%,$(shell find src -type d))
 cppobjects=$(patsubst src/%.cpp,output/%.o,$(shell find src -name "*.cpp"))
-cppobjects+=output/glad.o # apparently my glfw already comes with bindings for opengl (might need glad only for windows)
+cppobjects+=output/glad.o
 shaders=$(patsubst shaders/%.glsl,output/%.spv,$(shell find shaders -name "*.glsl"))
 
 ifndef RELEASE
@@ -34,25 +34,41 @@ output/base.o: src/base.cpp include/base.hpp
 output/glad.o: external/glad/src/glad.c
 	$(CC) -c -Iexternal/glad/include $< -o $@
 
+output/datatool.o: src2/datatool.cpp
+	echo "CPPC  " $<
+	$(CPPC) -c $< $(COMPFLAGS) -o $@
+
 output/%.o: src/%.cpp include/%.hpp
 	echo "CPPC  " $<
 	$(CPPC) -c $< $(COMPFLAGS) -o $@
 
-output/%:
+output/%: output
 	echo "MKDIR " $@
 	mkdir -p $@
 
+output:
+	echo "MKDIR " $@
+	mkdir -p $@
+
+
 output/mcclone: $(folders) $(cppobjects)
-	echo "LINK   object files"
-	$(CPPC) $(LINKFLAGS) $(cppobjects) $(cobjects) -o output/mcclone
+	echo "LINK   mcclone"
+	$(CPPC) $(LINKFLAGS) $(cppobjects) -o output/mcclone
+
+output/datatool: output/datatool.o output/data.o output/base.o
+	echo "LINK   datatool" 
+	$(CPPC) $(LINKFLAGS) $^ -o output/mcclone
 
 run: output/mcclone
-	echo "RUN   " $<
+	echo "RUN    mcclone"
 	$(RUNNER) output/mcclone
 
 debug: output/mcclone
 	echo "DEBUG  " $<
 	$(DEBUGGER) output/mcclone
+
+all: output/mcclone output/datatool
+
 
 .SILENT:
 

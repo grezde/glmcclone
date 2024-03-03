@@ -32,3 +32,36 @@ string readFileString(const char* filename) {
     fclose(f);
     return result;
 }
+
+#ifdef WIN32
+    #include <io.h>
+    #define F_OK 0
+    #define access _access
+#else
+#endif
+
+bool fileExists(const char* filename) {
+    return access(filename, F_OK) == 0;
+}
+
+#include <dirent.h>
+
+vector<FileEntry> readFolder(const char* name) {
+    DIR* dir;
+    struct dirent* entry;
+    dir = opendir(name);
+    if (dir == nullptr)
+        return vector<FileEntry>();
+    vector<FileEntry> result;
+    entry = readdir(dir);
+    while(entry != nullptr) {
+        if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            entry = readdir(dir);
+            continue;
+        }
+        result.push_back({ entry->d_type == DT_DIR, entry->d_name });
+        entry = readdir(dir);
+    }
+    closedir(dir);
+    return result;
+}

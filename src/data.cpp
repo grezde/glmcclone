@@ -1,4 +1,5 @@
 #include "data.hpp"
+#include "base.hpp"
 #include <cmath>
 #include <memory>
 #include <utility>
@@ -561,4 +562,212 @@ DataEntry* DataEntry::readFromText(const string &text, u32& index) {
     else ERR(string("Unexpected character '") + text[index] + "'", );
 
     #undef ERR
+}
+
+void DataEntry::writeBinary(FILE *out) {
+    fwrite(&type, 1, 1, out);
+    writeWithoutTag(out);
+}
+
+void DataEntry::writeWithoutTag(FILE* out) {
+    #define sfwrite(ptr, size) fwrite(ptr, size, 1, out)
+
+    switch (type) {
+        case UNKOWN:
+        case ERROR:
+        case LEAF:
+        case TYPE_COUNT:
+            break;
+        case INT8:
+        case UINT8:
+        case CHAR:
+            sfwrite(&integers.int8, 1);
+            break;
+        case INT16:
+        case UINT16:
+            sfwrite(&integers.int16, 2);
+            break;
+        case INT32:
+        case UINT32:
+        case FLOAT32:
+            sfwrite(&integers.int32, 4);
+            break;
+        case INT64:
+        case UINT64:
+        case FLOAT64:
+            sfwrite(&integers.int64, 8);
+            break;
+        case STRING:
+        case STR_SLICE: {
+            u16 size = str.size();
+            sfwrite(&size, 2);
+            sfwrite(&str[0], size);
+        }
+            break;
+        case LIST: {
+            u16 count = list.size();
+            sfwrite(&count, 2);
+            for(DataEntry* de : list)
+                de->writeBinary(out);
+        }
+            break;
+        case VECTOR: {
+            u16 count = list.size();
+            Type t2 = list.size() == 0 ? UNKOWN : list[0]->type;
+            sfwrite(&t2, 1);
+            sfwrite(&count, 2);
+            for(DataEntry* de : list)
+                de->writeWithoutTag(out);
+        }
+            break;
+        case MAP: {
+            u16 size = dict.size();
+            sfwrite(&size, 2);
+            for(const std::pair<string, DataEntry*> p : dict) {
+                size = p.first.size();
+                sfwrite(&size, 2);
+                sfwrite(&p.first[0], size);
+                p.second->writeBinary(out);
+            }
+        }
+            break;
+        case BYTES:
+            ERR_EXIT("WIP");
+            break;
+        case ALLOC:
+            ERR_EXIT("WIP");
+            break;
+        case ZIPPED:
+            ERR_EXIT("WIP"); 
+            break;
+    }
+
+#undef sfwrite
+}
+
+DataEntry* DataEntry::readWithoutTag(FILE *in, Type t) {
+    #define sfread(ptr, size) do{\
+        bytesRead = fread(ptr, size, 1, in);\
+        if(bytesRead != size) {\
+            delete de;\
+            DataEntry* de_err = new DataEntry(ERROR);\
+            de_err->error = { (u32)-1, "Unexpected end of input" };\
+            return de_err;\
+        }\
+    }while(0)
+
+    i32 bytesRead;
+    DataEntry* de = new DataEntry(t);
+    switch(t) {
+        case UNKOWN:
+        case ERROR:
+        case LEAF:
+        case TYPE_COUNT:
+            return de;
+            break;
+        case INT8:
+        case UINT8:
+        case CHAR:
+            sfread(&de->integers.int8, 1);
+            break;
+        case INT16:
+        case UINT16:
+            sfread(&de->integers.int16, 2);
+            break;
+        case INT32:
+        case UINT32:
+        case FLOAT32:
+            sfread(&de->integers.int32, 4);
+            break;
+        case INT64:
+        case UINT64:
+        case FLOAT64:
+            sfread(&de->integers.int64, 8);
+            break;
+        case STRING:
+        case STR_SLICE: {
+            u16 size;
+            sfread(&size, 2);
+            de->str.resize(size);
+            sfread(&de->str[0], size);
+        }
+            break;
+        case LIST: {
+            u16 count;
+            sfread(&count, 2);
+            de->list.reserve(count);
+            for(u16 i=0; i<count; i++) {
+                DataEntry* child = readBinary(in);
+                if(child->type == ERROR) {
+                    delete de;
+                    return child;
+                }
+                de->list.push_back(child);
+            }
+        }
+            break;
+        case VECTOR: {
+            u16 count;
+            Type t2;
+            sfread(&t2, 1);
+            sfread(&count, 2);
+            de->list.reserve(count);
+            for(u16 i=0; i<count; i++) {
+                DataEntry* child = readWithoutTag(in, t2);
+                if(child->type == ERROR) {
+                    delete de;
+                    return child;
+                }
+                de->list.push_back(child);
+            }
+        }
+            break;
+        case MAP: {
+            u16 entries;
+            sfread(&entries, 2);
+            string key;
+            for(u16 i=0; i<entries; i++) {
+                u16 keysize;
+                sfread(&keysize, 2);
+                key.resize(keysize);
+                sfread(&key[0], keysize);
+                DataEntry* value = readBinary(in);
+                if(value->type == ERROR) {
+                    delete de;
+                    return value;
+                }
+                de->dict[key] = value;
+            }
+        }
+            break;
+        case BYTES:
+            ERR_EXIT("WIP");
+            break;
+        case ALLOC:
+            ERR_EXIT("WIP");
+            break;
+        case ZIPPED:
+            ERR_EXIT("WIP"); 
+            break;
+    }
+    return de;
+    #undef sfread
+}
+
+DataEntry* DataEntry::readBinary(FILE *in) {
+    Type t;
+    fread(&t, 1, 1, in);
+    return readWithoutTag(in, t);
+}
+
+DataEntry* DataEntry::readFile(const string &filename) {
+    string file1 = filename + ".td";
+    if(fileExists(file1.c_str()))
+        return readText(readFileString(filename.c_str()));
+    file1[file1.size()-2] = 'b';
+    FILE* fin = fopen(file1.c_str(), "rb");
+    if(fin == nullptr) return nullptr;
+    DataEntry* d = readBinary(fin);
+    fclose(fin);
+    return d;
 }

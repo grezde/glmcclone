@@ -44,9 +44,17 @@ struct DataEntry {
     DataEntry(Type t);
     ~DataEntry();
 
+    static DataEntry* readFile(const string& filename);
+
     static DataEntry* readFromText(const string& text, u32& index);
     static DataEntry* readText(const string& text);
     void prettyPrint(std::ostream& out, u32 indent = 0) const;
+
+    static DataEntry* readBinary(FILE* in);
+    static DataEntry* readWithoutTag(FILE* in, Type t);
+    void writeWithoutTag(FILE* out);
+    void writeBinary(FILE* out);
+
 
     i64 geti64();
     void seti64(i64 value);
