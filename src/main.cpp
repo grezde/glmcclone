@@ -11,7 +11,7 @@ int main(int argc, const char** argv) {
     // cout << text << "\n\n";
     // DataEntry* de = DataEntry::readText(text);
     // de->prettyPrint(cout); cout << "\n";
-    
+    // return 0;
 
     Game::init();
     Game::run();

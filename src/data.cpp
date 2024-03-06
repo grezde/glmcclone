@@ -1,6 +1,7 @@
 #include "data.hpp"
 #include "base.hpp"
 #include <cmath>
+#include <cstring>
 #include <memory>
 #include <utility>
 
@@ -31,7 +32,8 @@ DataEntry::DataEntry(Type t) {
             new(&str) string();
             break;
         case ERROR:
-            error.location = 0;
+            error.row = 0;
+            error.col = 0;
             new(&error.message) string();
             break;
         case LIST:
@@ -49,6 +51,10 @@ DataEntry::DataEntry(Type t) {
             break;
         case ZIPPED:
             zipped = {};
+            break;
+        case PAIR:
+        case TUPLE3:
+            tuple = {};
             break;
         }
 }
@@ -92,7 +98,92 @@ DataEntry::~DataEntry() {
         case ZIPPED:
             delete zipped.inner;
             break;
+        case PAIR:
+            if(tuple.first != nullptr) delete tuple.first;
+            if(tuple.second != nullptr) delete tuple.second;
+            break;
+        case TUPLE3:
+            if(tuple.first != nullptr) delete tuple.first;
+            if(tuple.second != nullptr) delete tuple.second;
+            if(tuple.third != nullptr) delete tuple.third;
+            break;
         }
+}
+
+DataEntry* DataEntry::copy() const {
+    DataEntry* result = new DataEntry(type);
+    switch (type) {
+        case UNKOWN:
+        case ERROR:
+        case LEAF:
+        case TYPE_COUNT:
+            break;
+        case INT8:
+        case INT16:
+        case INT32:
+        case INT64:
+        case UINT8:
+        case UINT16:
+        case UINT32:
+        case UINT64:
+        case FLOAT32:
+        case FLOAT64:
+        case CHAR:
+            result->integers = integers;
+            break;
+        case STRING:
+        case STR_SLICE:
+            result->str = str;
+            break;
+        case LIST:
+        case VECTOR:
+            result->list.reserve(list.size());
+            for(DataEntry* de : list)
+                result->list.push_back(de->copy());
+            break;
+        case MAP:
+            for(const std::pair<string, DataEntry*> p : dict)
+                result->dict[p.first] = p.second->copy();
+            break;
+        case PAIR:
+            result->tuple.first = tuple.first->copy();
+            result->tuple.second = tuple.second->copy();
+            break;
+        case TUPLE3:
+            result->tuple.first = tuple.first->copy();
+            result->tuple.second = tuple.second->copy();
+            result->tuple.third = tuple.third->copy();
+            break;
+        case BYTES:
+            result->bytes.resize(bytes.size());
+            memcpy(&result->bytes[0], &bytes[0], bytes.size());
+            break;
+        case ALLOC:
+            result->allocation.size = allocation.size;
+            result->allocation.inner = allocation.inner->copy();
+            break;
+        case ZIPPED:
+            result->zipped.type = zipped.type;
+            result->zipped.inner = zipped.inner->copy();
+            break;
+    }
+    return result;
+}
+
+void DataEntry::mergeStructure(const DataEntry* other) {
+    if(!(this->isMap() && other->isMap()))
+        return;
+    for(std::pair<string, DataEntry*> p : other->dict) {
+        DataEntry*& newchild = dict[p.first];
+        if(this->has(p.first)) {
+            if(newchild->isMap()) {
+                newchild->mergeStructure(p.second);
+                continue;
+            }
+            delete newchild;
+        }
+        newchild = p.second->copy();
+    }
 }
 
 string unescapeString(const string& raw);
@@ -104,7 +195,7 @@ void DataEntry::prettyPrint(std::ostream& out, u32 indent) const {
             out << "????";
             break;
         case ERROR:
-            out << "ERROR:" << error.location << ": " << error.message; 
+            out << "ERROR: " << error.row << ":" << error.col << ": " << error.message; 
             break;
         case LEAF:
             out << "LEAF";
@@ -191,7 +282,19 @@ void DataEntry::prettyPrint(std::ostream& out, u32 indent) const {
         case TYPE_COUNT: 
             out << "?????";
             break;
-    }
+        case PAIR:
+        case TUPLE3:
+            out << "(";
+            tuple.first->prettyPrint(out, indent);
+            out << ", ";
+            tuple.second->prettyPrint(out, indent);
+            if(type == TUPLE3) {
+                out << ", ";
+                tuple.third->prettyPrint(out, indent);
+            }
+            out << ")";
+            break;
+        }
 }
 
 bool isWhitespace(char c) {
@@ -312,7 +415,7 @@ u64 getUINT(const string& text, u32& index) {
     return value;
 }
 
-i64 DataEntry::geti64() {
+i64 DataEntry::geti64() const {
     switch(type) {
         case INT8: return integers.int8;
         case INT16: return integers.int16;
@@ -340,7 +443,7 @@ void DataEntry::seti64(i64 value) {
     }
 }
 
-f64 DataEntry::getf64() {
+f64 DataEntry::getf64() const {
     switch(type) {
         case FLOAT32: return integers.float32;
         case FLOAT64: return integers.float64;
@@ -365,7 +468,8 @@ DataEntry* DataEntry::readFromText(const string &text, u32& index) {
  
     #define ERR(errmsg, cleanup)  do{                                      \
         DataEntry* de_err = new DataEntry(DataEntry::ERROR);                       \
-        de_err->error = { index, errmsg };                              \
+        u32 _linen = 0, _lastl = 0; for(u32 i=0; i<index; i++) if(text[i] == '\n') { _linen++; _lastl=i; } \
+        de_err->error = { _linen+1, index - _lastl, errmsg };                              \
         cleanup;                                                    \
         return de_err;                                                  \
     }while(0)
@@ -505,6 +609,38 @@ DataEntry* DataEntry::readFromText(const string &text, u32& index) {
         else ERR("Impossible cast", delete inner);
         return inner;
     }
+    else if(text[index] == '(') {
+        index++;
+        DataEntry* first = DataEntry::readFromText(text, index);
+        if(first->type == ERROR) return first;
+        ignoreWS(text, index);
+        if(index == text.size() || text[index] != ',')
+            ERR("Pair or tuple must have elements separated by commas", delete first);
+        index++;
+        DataEntry* second = DataEntry::readFromText(text, index);
+        if(second->type == ERROR) { delete first; return second; }
+        ignoreWS(text, index);
+        if(!(text[index] == ',' || text[index] == ')')) {
+            cout << index << " '" << text[index] << "'\n";
+            ERR("Pair or tuple must have elements separated by commas 2", delete first; delete second);
+        }
+        if(text[index] == ')') {
+            index++;
+            DataEntry* pair = new DataEntry(PAIR);
+            pair->tuple = { first, second, nullptr };
+            return pair;
+        }
+        index++;
+        DataEntry* third = DataEntry::readFromText(text, index);
+        if(third->type == ERROR) { delete first; delete second; return third; }
+        ignoreWS(text, index);
+        if(index == text.size() || text[index] != ')')
+            ERR("Tuple must have 3 elements separated by commas", delete first; delete second; delete third);
+        index++;
+        DataEntry* tuple = new DataEntry(TUPLE3);
+        tuple->tuple = { first, second, third };
+        return tuple;
+    }
     else if(text[index] == '"') {
         string s = getStringLiteral(text, index);
         if(index == text.size()) ERR("Unterminated string", );
@@ -643,7 +779,16 @@ void DataEntry::writeWithoutTag(FILE* out) {
         case ZIPPED:
             ERR_EXIT("WIP"); 
             break;
-    }
+        case PAIR:
+            tuple.first->writeBinary(out);
+            tuple.second->writeBinary(out);
+            break;
+        case TUPLE3:
+            tuple.first->writeBinary(out);
+            tuple.second->writeBinary(out);
+            tuple.third->writeBinary(out);
+            break;
+        }
 
 #undef sfwrite
 }
@@ -654,7 +799,7 @@ DataEntry* DataEntry::readWithoutTag(FILE *in, Type t) {
         if(bytesRead != 1) {\
             delete de;\
             DataEntry* de_err = new DataEntry(ERROR);\
-            de_err->error = { (u32)-1, "Unexpected end of input" };\
+            de_err->error = { (u32)-1, (u32)-1, "Unexpected end of input" };\
             return de_err;\
         }\
     }while(0)
@@ -752,7 +897,16 @@ DataEntry* DataEntry::readWithoutTag(FILE *in, Type t) {
         case ZIPPED:
             ERR_EXIT("WIP"); 
             break;
-    }
+        case PAIR:
+            de->tuple.first = readBinary(in);
+            de->tuple.second = readBinary(in);
+            break;
+        case TUPLE3:
+            de->tuple.first = readBinary(in);
+            de->tuple.second = readBinary(in);
+            de->tuple.third = readBinary(in);
+            break;
+        }
     return de;
     #undef sfread
 }

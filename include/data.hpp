@@ -33,6 +33,9 @@ struct DataEntry {
         VECTOR, // list of values of the same type (count as u32 + type + values...) 
         MAP, // a map/dictionary/object (count + (key as null terminated string + value)...)
 
+        PAIR, // a pair of values
+        TUPLE3, // a tuple of size 3
+
         BYTES, // list of bytes (count + bytes...)
         ALLOC, // a portion of the file which might be empty (size as u32 + inner value)
         ZIPPED, // a compressed tag (compression type + size as u32 + uncompressed size + inner value zipped)
@@ -43,6 +46,7 @@ struct DataEntry {
 
     DataEntry(Type t);
     ~DataEntry();
+    DataEntry* copy() const;
 
     static DataEntry* readFile(const string& filename);
 
@@ -55,20 +59,20 @@ struct DataEntry {
     void writeWithoutTag(FILE* out);
     void writeBinary(FILE* out);
 
-
-    i64 geti64();
+    i64 geti64() const;
     void seti64(i64 value);
-    f64 getf64();
+    f64 getf64() const;
     void setf64(f64 value);
 
-    inline bool isMap() { return type == MAP; }
-    inline bool isListable() { return type == LIST || type == VECTOR; }
-    inline bool isStringable() { return type == STRING || type == STR_SLICE; }
+    inline bool isMap() const { return type == MAP; }
+    inline bool isListable() const { return type == LIST || type == VECTOR; }
+    inline bool isStringable() const { return type == STRING || type == STR_SLICE; }
     
-    inline bool has(const string& key) { return dict.find(key) != dict.end(); }
+    inline bool has(const string& key) const { return dict.find(key) != dict.end(); }
     inline DataEntry* child(const string& key) { return dict[key]; }
     inline DataEntry* schild(const string& key) { return has(key) ? child(key) : nullptr; }
-    inline bool operator==(const string& strValue) { return str == strValue; }
+    //inline bool operator==(const string& strValue) { return str == strValue; }
+    void mergeStructure(const DataEntry* de);
 
     union {
         union {
@@ -96,9 +100,15 @@ struct DataEntry {
             DataEntry* inner;
         } zipped;
         struct {
-            u32 location;
+            u32 row;
+            u32 col;
             string message;
         } error;
+        struct {
+            DataEntry* first;
+            DataEntry* second;
+            DataEntry* third;
+        } tuple;
         vector<u8> bytes;
     };
 

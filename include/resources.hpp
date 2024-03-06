@@ -24,6 +24,7 @@ struct registry {
 
 struct Texture {
     u32 id;
+    u32 atlasID;
     string name;
 };
 
@@ -34,9 +35,12 @@ namespace Registry {
     extern registry<BlockModelConstructor> blockModels;
     extern registry<Texture> textures;
     extern registry<Block*> blocks;
+    extern registry<vector<string>> enums;
 
     constexpr u32 ATLASDIM = 16;
     constexpr u32 ATLASTILE = 16;
-    u32 makeAtlas(const string& folder); // Creates a texture atlas with all the files within the folder 
+    u32* makeAtlas(); // Creates a texture atlas with all the files within the folder 
+    void addToAtlas(u32* atlasData, u32& index, const string& folder);
+    u32 finishAtlas(u32* atlasData);
     void init();
 };

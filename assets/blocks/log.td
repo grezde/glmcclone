@@ -1,8 +1,13 @@
 {
-    model: <slice> "cube",
+    model: "cube",
     textures: {
-        tops: "blocks/log_top",
-        sides: "blocks/log_side",
+        x: "blocks/log_side",
+        y: "blocks/log_side",
+        z: "blocks/log_side"
     },
-    things: [1,2,12.0179897987,2, "hello?", {}, [[[]]], ["a", "b", { c: 12 }],],
+    variants: {
+        x: { textures: { x: "blocks/log_top" }},
+        y: { textures: { y: "blocks/log_top" }},
+        z: { textures: { z: "blocks/log_top" }},
+    }
 }

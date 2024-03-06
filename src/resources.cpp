@@ -11,18 +11,21 @@ registry<Block*> Registry::blocks;
 registry<BlockModelConstructor> Registry::blockModels;
 registry<u32> Registry::glTextures;
 registry<u32> Registry::shaders;
+registry<vector<string>> Registry::enums;
 
-u32 Registry::makeAtlas(const string& folder) {
-    // u32 is the color
+u32* Registry::makeAtlas() {
     u32* data = (u32*)malloc(4*ATLASTILE*ATLASTILE*ATLASDIM*ATLASDIM);
     memset(data, 0, 4*ATLASTILE*ATLASTILE*ATLASDIM*ATLASDIM);
     for(u32 y=0; y<ATLASTILE; y++) for(u32 x=0; x<ATLASTILE; x++) {
         u32 mag = (x < 8) ^ (y < 8);
         data[y*ATLASTILE*ATLASDIM+x] = mag ? 0xFFFF00FF : 0xFF000000;
     }
-    u32 index = 1;
+    return data;
+}
+
+void Registry::addToAtlas(u32 *atlasData, u32 &index, const string& folder) {
     for(auto& p : textures.names) {
-        if(folder.size() != 0 && p.first.compare(0, folder.size(), folder) != 0)
+        if(p.first.compare(0, folder.size(), folder) != 0)
             continue;
         if(p.first.size() < folder.size()+2)
             continue;
@@ -32,28 +35,54 @@ u32 Registry::makeAtlas(const string& folder) {
         i32 imageWidth, imageHeight, imageChannels;
         u8* newdata = stbi_load(filename.c_str(), &imageWidth, &imageHeight, &imageChannels, 4);
         cout << "ATLAS " << p.first << " at " << filename << ": " << imageChannels << " " << imageWidth << " " << imageHeight << "\n";
-        if(data == nullptr) ERR_EXIT("Could not load image " << p.first << ", " << filename);
-        if(imageChannels != 4 || imageWidth != ATLASTILE || imageHeight != ATLASTILE)
+        if(newdata == nullptr) ERR_EXIT("Could not load image " << p.first << ", " << filename);
+        if(imageWidth != ATLASTILE || imageHeight != ATLASTILE)
             ERR_EXIT("Image not in apropriate format " << p.first);
-        for(u32 y=0; y < ATLASTILE; y++)
-        for(u32 x=0; x < ATLASTILE; x++) {
-            data[((index/ATLASDIM)*ATLASTILE + y)*ATLASTILE*ATLASDIM + (index%ATLASDIM)*ATLASTILE + x] = ((u32*)newdata)[ATLASTILE*y+x];
-        };
+        if(imageChannels == 3)
+            imageChannels = 4;
+        if(imageChannels != 4)
+            ERR_EXIT("Image not in apropriate format " << p.first);
+        for(u32 y=0; y < ATLASTILE; y++) for(u32 x=0; x < ATLASTILE; x++)
+            atlasData[((index/ATLASDIM)*ATLASTILE + y)*ATLASTILE*ATLASDIM + (index%ATLASDIM)*ATLASTILE + x] = ((u32*)newdata)[ATLASTILE*y+x];
         stbi_image_free(newdata);
+        textures.items[p.second].atlasID = index;
         index++;
     }
+}
+
+u32 Registry::finishAtlas(u32 *atlasData) {
     #ifdef DEBUG
-        stbi_write_png("output/atlas_new.png", ATLASTILE*ATLASDIM, ATLASTILE*ATLASDIM, 4, data, ATLASTILE*ATLASDIM*4);
+        stbi_write_png("output/atlas_new.png", ATLASTILE*ATLASDIM, ATLASTILE*ATLASDIM, 4, atlasData, ATLASTILE*ATLASDIM*4);
     #endif
     // Finally we must flip everything in acordance to OpenGL
     for(u32 y=0; y<ATLASTILE*ATLASDIM/2; y++) for(u32 x=0; x<ATLASTILE*ATLASDIM; x++) {
-        u32 temp = data[y*ATLASTILE*ATLASDIM+x];
-        data[y*ATLASTILE*ATLASDIM+x] = data[(ATLASDIM*ATLASTILE-y-1)*ATLASTILE*ATLASDIM+x];
-        data[(ATLASDIM*ATLASTILE-y-1)*ATLASTILE*ATLASDIM+x] = temp;
+        u32 temp = atlasData[y*ATLASTILE*ATLASDIM+x];
+        atlasData[y*ATLASTILE*ATLASDIM+x] = atlasData[(ATLASDIM*ATLASTILE-y-1)*ATLASTILE*ATLASDIM+x];
+        atlasData[(ATLASDIM*ATLASTILE-y-1)*ATLASTILE*ATLASDIM+x] = temp;
     };
-    u32 t = gl::textureFromMemory((u8*)data, ATLASDIM*ATLASTILE, ATLASDIM*ATLASTILE, 4);
-    free(data);
+    u32 t = gl::textureFromMemory((u8*)atlasData, ATLASDIM*ATLASTILE, ATLASDIM*ATLASTILE, 4);
+    free(atlasData);
     return t;
+}
+
+void addBlockToRegistry(DataEntry* de, const string& name) {
+    if(!de || !de->isMap()) { cout << "srs?\n"; return; }
+    if(!de->has("variants")) {
+        Registry::blocks.add(name, new Block(name, de));
+        return;
+    }
+    DataEntry* variants = de->child("variants");
+    de->dict.erase(de->dict.find("variants"));
+    if(!variants->isMap()) { cout << "!!!!!!!!! wimped out\n"; return; }
+    for(const std::pair<string, DataEntry*> p : variants->dict) {
+        cout << "!!!! VARIANT OF " << name << " IS " << p.first << "\n";
+        string variantName = name + "/" + p.first;
+        DataEntry* variantDE = de->copy();
+        variantDE->mergeStructure(p.second);
+        Registry::blocks.add(variantName, new Block(variantName, variantDE));
+        delete variantDE;
+    }
+    de->dict["variants"] = variants;
 }
 
 void Registry::init() {
@@ -78,21 +107,42 @@ void Registry::init() {
         shaders.add(fe.name, shader);
     }
 
-    shaders.print(cout, "shaders");
-
     // textures
     vector<FileEntry> textureFES = readFolderRecursively("assets/textures");
-    textures.add("missing", { 0, "missing" });
+    textures.add("missing", { 0, 0, "missing" });
     for(FileEntry fe : textureFES) {
         if(!fe.hasExtension("png"))
             continue;
         fe.removeExtension(3);
-        textures.add(fe.name, { (u32)textures.items.size(), fe.name });
+        textures.add(fe.name, { (u32)textures.items.size(), 0, fe.name });
     }
 
     // block models
     blockModels.add("none", noModelConstructor);
     blockModels.add("cube", cubeModelConstructor);
+
+    // atlas
+    u32* atlasData = makeAtlas();
+    u32 atlasIndex = 1;
+    addToAtlas(atlasData, atlasIndex, "blocks");
+    glTextures.add("atlas", finishAtlas(atlasData));
+
+    // enums 
+    DataEntry* enumsDE = DataEntry::readText(readFileString("assets/enums.td"));
+    if(enumsDE->isMap()) {
+        for(const std::pair<string, DataEntry*>& p : enumsDE->dict) {
+            if(!p.second->isListable())
+                continue;
+            vector<string> vs;
+            for(const DataEntry* item : p.second->list) {
+                if(!item->isStringable())
+                    continue;
+                vs.push_back(item->str);
+            }
+            enums.add(p.first, vs);
+        }
+    }
+    delete enumsDE;
 
     // blocks
     vector<FileEntry> blockFES = readFolder("assets/blocks");
@@ -102,12 +152,17 @@ void Registry::init() {
             continue;
         string filename = "assets/blocks/" + fe.name;
         DataEntry* de = DataEntry::readText(readFileString(filename.c_str()));
+        if(de->type == DataEntry::ERROR) {
+            de->prettyPrint(cout);
+            continue;
+        }
         fe.removeExtension(2);
-        blocks.add(fe.name, new Block(fe.name, de));
+        addBlockToRegistry(de, fe.name);
         delete de;
     }
 
-    // atlas
-    glTextures.add("blockAtlas", makeAtlas("blocks"));
+    cout << "REGISTRY:\n";
+    shaders.print(cout, "shaders");
+    blocks.print(cout, "blocks");
 
 }

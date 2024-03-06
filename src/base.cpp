@@ -6,7 +6,6 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
-
 vector<u8> readFileBytes(const char* filename) {
     vector<u8> result;
     FILE *f = fopen(filename, "rb");

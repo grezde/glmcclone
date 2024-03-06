@@ -90,7 +90,7 @@ BlockModel* cubeModelConstructor(DataEntry* de) {
         Texture texture = Registry::textures[p.second->str];
         for(u8 dir = 0; dir < 6; dir++)
             if(set & (1 << dir)) {
-                model->faces[dir] = texture.id;
+                model->faces[dir] = texture.atlasID;
             }
     }
     return model;
@@ -199,17 +199,20 @@ void Chunk::makeSimpleMesh(SimpleMesh& mesh) {
 }
 
 void World::init() {
-    chunks.push_back(WorldChunk { 
-        .coords = { 0,0,0 }, 
+    glm::ivec3 p = {0, 0, 1};
+    chunks[p] = new WorldChunk { 
+        .coords = { 0,0,1 }, 
         .chunk = Chunk(), 
         .mesh = SimpleMesh() 
-    });
-    chunks[0].chunk.makeRandom();
-    chunks[0].chunk.makeSimpleMesh(chunks[0].mesh);
-    chunks[0].mesh.makeObjects();
+    };
+    chunks[p]->chunk.makeRandom();
+    chunks[p]->chunk.makeSimpleMesh(chunks[p]->mesh);
+    chunks[p]->mesh.makeObjects();
 }
 
 void World::draw() {
-    chunks[0].mesh.updateUniforms();
-    chunks[0].mesh.draw();
+    for(auto& p : chunks) {
+        p.second->mesh.updateUniforms();
+        p.second->mesh.draw();
+    }
 }

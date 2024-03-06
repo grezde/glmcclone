@@ -2,6 +2,9 @@
 #include "data.hpp"
 #include "renderer.hpp"
 #include <glm/ext/vector_int3.hpp>
+#include <unordered_map>
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/hash.hpp"
 struct SimpleMesh;
 struct Chunk;
 
@@ -41,7 +44,12 @@ typedef BlockModel* (*BlockModelConstructor)(DataEntry* de);
 
 struct Block {
     u8 solidity;
-    BlockModel* model;
+    BlockModel* model = nullptr;
+    // for block variants, the naming convention is
+    // log/facing_x <= log is the block, facing is the prop name and x is the enum value
+    // or: bed/color_red/wood_oak
+    // or: tiny_block/pallete_stone/fullness_4A
+    // enums are defined in data
     string name;
     Block(string blockName, DataEntry* de);
 };
@@ -65,7 +73,7 @@ struct WorldChunk {
 };
 
 struct World {
-    vector<WorldChunk> chunks;
+    std::unordered_map<glm::ivec3, WorldChunk*> chunks;
     void init();
     void draw();
 };
