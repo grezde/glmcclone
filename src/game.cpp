@@ -7,28 +7,7 @@
 
 Game* Game::instance = nullptr;
 
-static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
-    (void) window;
-    Game::instance->input.mousePos.x = xpos;
-    Game::instance->input.mousePos.y = ypos;
-}
-
-void InputHandler::init() {
-    GLFWwindow* window = Game::instance->renderer.window;
-    glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-    glfwSetCursorPosCallback(window, cursor_position_callback);
-}
-
-void InputHandler::toggleCursor() {
-    disabledCursor = !disabledCursor;
-    glfwSetInputMode(Game::instance->renderer.window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-}
-
-bool InputHandler::isPressed(i32 key) {
-    return glfwGetKey(Game::instance->renderer.window, key) == GLFW_PRESS;
-}
-
-void InputHandler::processInput(f32 dt) {
+void Game::processInput(f32 dt) {
     static constexpr float cameraAngleSpeed = 2.0f;
     static constexpr float cameraSpeed = 8.0f;
     static bool prevEscape = false;
@@ -36,21 +15,21 @@ void InputHandler::processInput(f32 dt) {
     static bool lastMouseFirst = true;
 
     glm::vec3 movement = {0, 0, 0};
-    if(isPressed(GLFW_KEY_W))
+    if(window::isPressed(GLFW_KEY_W))
         movement += glm::vec3(0, 0, 1);
-    if(isPressed(GLFW_KEY_A))
+    if(window::isPressed(GLFW_KEY_A))
         movement += glm::vec3(-1, 0, 0);
-    if(isPressed(GLFW_KEY_S))
+    if(window::isPressed(GLFW_KEY_S))
         movement += glm::vec3(0, 0, -1);
-    if(isPressed(GLFW_KEY_D))
+    if(window::isPressed(GLFW_KEY_D))
         movement += glm::vec3(1, 0, 0);
-    if(isPressed(GLFW_KEY_UP))
+    if(window::isPressed(GLFW_KEY_UP))
         movement += glm::vec3(0, 1, 0);
-    if(isPressed(GLFW_KEY_DOWN))
+    if(window::isPressed(GLFW_KEY_DOWN))
         movement += glm::vec3(0, -1, 0);
-    bool escape = isPressed(GLFW_KEY_ESCAPE);
+    bool escape = window::isPressed(GLFW_KEY_ESCAPE);
     if(escape && !prevEscape)
-        toggleCursor();
+        window::toggleCursor();
     prevEscape = escape;
 
     glm::vec2& cameraAngle = Game::instance->renderer.cameraAngle;
@@ -62,14 +41,14 @@ void InputHandler::processInput(f32 dt) {
     movementReal *= dt * cameraSpeed;
     cameraPos += movementReal;
 
-    if(disabledCursor) {
-        glm::vec2 mc = mousePos - lastMousePos;
+    if(window::disabledCursor) {
+        glm::vec2 mc = window::mousePos - lastMousePos;
         if(lastMouseFirst && (mc.x != 0.0f || mc.y != 0.0f)) {
             lastMouseFirst = false;
             return;
         }
-        mc.x /= Game::instance->renderer.width;
-        mc.y /= Game::instance->renderer.height;
+        mc.x /= window::width;
+        mc.y /= window::height;
         cameraAngle += glm::vec2(mc.x, mc.y) * cameraAngleSpeed;
         constexpr float PI = 3.14159268f;
         if(cameraAngle.y > 0.5f*PI*0.99f)
@@ -81,7 +60,7 @@ void InputHandler::processInput(f32 dt) {
         if(cameraAngle.x < -PI)
             cameraAngle.x += 2.0*PI;
     }
-    lastMousePos = mousePos;
+    lastMousePos = window::mousePos;
 }
 
 vector<BlockRenderProps> Chunk::props = {
@@ -263,9 +242,9 @@ void World::draw() {
 
 void Game::init() {
     printFPS = false;
+    window::init(800, 600, "Hello warld");
     renderer.init(800, 600, "Hello warld");
-    input.init();
-    input.toggleCursor();
+    
     renderer.makeAtlas();
     testWorld.init();
     renderer.meshes.push_back(SimpleMesh());
@@ -279,7 +258,7 @@ void Game::run() {
     f32 fpst = 0.0f;
     u32 fpsc = 0;
 
-    while(!glfwWindowShouldClose(renderer.window)) {
+    while(!glfwWindowShouldClose(window::window)) {
 
         f32 time = glfwGetTime();
         f32 dt = time - ptime;
@@ -293,7 +272,7 @@ void Game::run() {
             fpst = 0.0f;
         }
 
-        input.processInput(dt);
+        processInput(dt);
         renderer.render();
         glfwPollEvents();
     }

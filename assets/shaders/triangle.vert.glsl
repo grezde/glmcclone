@@ -16,9 +16,9 @@ layout(/*set = 0, */ binding = 0) uniform UniformBufferObject {
 
 void main() {
     vec4 pos1 = ubo.proj * ubo.view * ubo.model * (vec4(inPosition, 1.0) + 0.1 * vec4(
-       sin(ubo.time*(2+gl_VertexIndex+2)), 
-       cos(ubo.time*(1.5+0.8*2+gl_VertexIndex)),
-       sin(ubo.time*(1+0.2*gl_VertexIndex) + 1), 0.0
+       sin(ubo.time*(2+gl_VertexID+2)), 
+       cos(ubo.time*(1.5+0.8*2+gl_VertexID)),
+       sin(ubo.time*(1+0.2*gl_VertexID) + 1), 0.0
     ));
     gl_Position = vec4(1.5*pos1.xy, pos1.zw);
     fragColor = inColor;

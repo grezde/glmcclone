@@ -1,16 +1,6 @@
 #pragma once
 #include "renderer.hpp"
 
-struct InputHandler {
-    bool disabledCursor = true;
-    glm::vec2 mousePos = {0.0f, 0.0f};
-
-    bool isPressed(i32 key);
-    void init();
-    void toggleCursor();
-    void processInput(f32 dt);
-};
-
 struct BlockRenderProps {
     typedef u8 textureID;
     textureID faces[6]; // east, south, west, north, up, down
@@ -42,13 +32,13 @@ struct World {
 
 struct Game {
     Renderer renderer;
-    InputHandler input;
     static Game* instance;
     bool printFPS;
     World testWorld;
     Chunk testChunk;
 
     Game() { instance = this; }
+    void processInput(f32 dt);
     void init();
     void run();
     void destory();

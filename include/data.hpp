@@ -61,6 +61,15 @@ struct DataEntry {
     f64 getf64();
     void setf64(f64 value);
 
+    inline bool isMap() { return type == MAP; }
+    inline bool isListable() { return type == LIST || type == VECTOR; }
+    inline bool isStringable() { return type == STRING || type == STR_SLICE; }
+    
+    inline bool has(const string& key) { return dict.find(key) != dict.end(); }
+    inline DataEntry* child(const string& key) { return dict[key]; }
+    inline DataEntry* schild(const string& key) { return has(key) ? child(key) : nullptr; }
+    inline bool operator==(const string& strValue) { return str == strValue; }
+
     union {
         union {
             u8 uint8;

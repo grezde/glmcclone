@@ -44,6 +44,17 @@ bool fileExists(const char* filename) {
     return access(filename, F_OK) == 0;
 }
 
+bool FileEntry::hasExtension(const string& ext) const {
+    if(name.size() < ext.size()+1)
+        return false;
+    return name[name.size()-ext.size()-1] == '.' && 
+        strcmp(&name[name.size()-ext.size()], &ext[0]) == 0;
+}
+
+void FileEntry::removeExtension(u32 extsize) {
+    name.resize(name.size()-extsize-1);
+}
+
 #include <dirent.h>
 
 vector<FileEntry> readFolder(const char* name) {
@@ -65,3 +76,42 @@ vector<FileEntry> readFolder(const char* name) {
     closedir(dir);
     return result;
 }
+
+void readFolderR(string& foldername, string& basename, vector<FileEntry>& out) {
+    DIR* dir;
+    struct dirent* entry;
+    dir = opendir(foldername.c_str());
+    if (dir == nullptr) return;
+    entry = readdir(dir);
+    while(entry != nullptr) {
+        if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            entry = readdir(dir);
+            continue;
+        }
+        if(entry->d_type == DT_DIR) {
+            u64 sizes[] = { foldername.size(), basename.size() };
+            foldername += "/";
+            foldername += entry->d_name;
+            basename += entry->d_name;
+            basename += "/";
+            readFolderR(foldername, basename, out);
+            foldername.resize(sizes[0]);
+            basename.resize(sizes[0]);
+        }
+        else {
+            out.push_back({ false, basename + entry->d_name });
+
+        }
+        entry = readdir(dir);
+    }
+    closedir(dir);
+}
+
+vector<FileEntry> readFolderRecursively(const char* name) {
+    vector<FileEntry> result;
+    string foldername = name;
+    string basename = "";
+    readFolderR(foldername, basename, result);
+    return result;
+}
+

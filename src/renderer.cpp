@@ -12,6 +12,12 @@
 #include "game.hpp"
 
 u32 shader::currentShader = 0;
+glm::vec4 window::clearColor = { 0.2f, 0.3f, 0.3f, 1.0f };
+GLFWwindow* window::window = nullptr;
+i32 window::width = 0, window::height = 0;
+const char* window::title = nullptr;
+bool window::disabledCursor = false;
+glm::vec2 window::mousePos = { 0, 0 };
 
 u32 gl::generateVBO(void* values, u32 size) {
     u32 VBO;
@@ -98,11 +104,6 @@ void gl::bindTexture(u32 texture, u32 slot) {
     glBindTexture(GL_TEXTURE_2D, texture);
 }
 
-void shader::bind(u32 shader) {
-    currentShader = shader;
-    glUseProgram(shader);
-}
-
 u32 gl::makeProgram(const string& vertexSource, const string& fragmentSource) {
     using namespace gl;
     u32 vertexShader = compileShader(vertexSource, GL_VERTEX_SHADER);
@@ -111,6 +112,11 @@ u32 gl::makeProgram(const string& vertexSource, const string& fragmentSource) {
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
     return id;
+}
+
+void shader::bind(u32 shader) {
+    currentShader = shader;
+    glUseProgram(shader);
 }
 
 void shader::setTexture(const char* name, u32 slot) {
@@ -128,6 +134,80 @@ void shader::setVec3(const char* name, const glm::vec3& value) {
 void shader::setMat4(const char* name, const glm::mat4& value) {
     glUniformMatrix4fv(glGetUniformLocation(currentShader, name), 1, GL_FALSE, glm::value_ptr(value));
 }
+
+
+
+static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    (void) window;
+    glViewport(0, 0, width, height);
+    window::width = width;
+    window::height = height;
+}
+
+static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    (void) window;
+    window::mousePos.x = xpos;
+    window::mousePos.y = ypos;
+}
+
+void window::init(i32 width, i32 height, const char *title) {
+    window::width = width;
+    window::height = height;
+    window::title = title;
+
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  
+    //glfwWindowHint(GLFW_SAMPLES, 4);
+    window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+    if(window == nullptr) {
+        glfwTerminate();
+        ERR_EXIT("GLFW Window creation failed");
+    }
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        glfwTerminate();
+        ERR_EXIT("GLAD failed to load OpenGL functions");
+    }
+
+    glViewport(0, 0, width, height);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT); 
+    glFrontFace(GL_CW);
+    //glEnable(GL_MULTISAMPLE);  
+
+}
+
+void window::beginDrawing() {
+    glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void window::endDrawing() {
+    glfwSwapBuffers(window);
+}
+
+void window::destroy() {
+    glfwTerminate();
+}
+
+void window::toggleCursor() {
+    disabledCursor = !disabledCursor;
+    glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+}
+
+bool window::isPressed(i32 key) {
+    return glfwGetKey(window, key) == GLFW_PRESS;
+}
+
 
 void SimpleMesh::makeObjects() {
     using namespace gl;
@@ -150,13 +230,6 @@ void SimpleMesh::draw() {
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
     //glDrawArrays(GL_TRIANGLES, 0, 3);
-}
-
-static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    (void) window;
-    glViewport(0, 0, width, height);
-    Game::instance->renderer.width = width;
-    Game::instance->renderer.height = height;
 }
 
 void Renderer::makeAtlas() {
@@ -199,38 +272,7 @@ void Renderer::makeAtlas() {
 }
 
 void Renderer::init(i32 width, i32 height, const char* title) {
-    this->width = width;
-    this->height = height;
-    this->title = title;
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  
-    //glfwWindowHint(GLFW_SAMPLES, 4);
-    GLFWwindow* window = glfwCreateWindow(width, height, title, nullptr, nullptr);
-    this->window = window;
-    if(window == nullptr) {
-        glfwTerminate();
-        ERR_EXIT("GLFW Window creation failed");
-    }
-    glfwMakeContextCurrent(window);
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        glfwTerminate();
-        ERR_EXIT("GLAD failed to load OpenGL functions");
-    }
-
-    glViewport(0, 0, width, height);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_FRONT); 
-    glFrontFace(GL_CW);
-    //glEnable(GL_MULTISAMPLE);  
-
-
+    
     shaders.push_back(gl::makeProgram(
         readFileString("assets/shaders/simple.vert.glsl"), 
         readFileString("assets/shaders/simple.frag.glsl")
@@ -242,9 +284,8 @@ void Renderer::init(i32 width, i32 height, const char* title) {
 }
 
 void Renderer::render() {
-        
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    window::beginDrawing();
 
     glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
         std::cos(cameraAngle.x)*std::cos(cameraAngle.y),
@@ -252,7 +293,7 @@ void Renderer::render() {
         std::sin(cameraAngle.x)*std::cos(cameraAngle.y)
     ), glm::vec3(0, 1, 0));
     
-    glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)width/(f32)height, 0.1f, 100.0f);
+    glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)window::width/(f32)window::height, 0.1f, 100.0f);
 
     shader::bind(shaders[0]);
     shader::setMat4("view", view);
@@ -265,10 +306,10 @@ void Renderer::render() {
         mesh.draw();
     }
     
-    glfwSwapBuffers(window);    
+    window::endDrawing();
 }
 
 void Renderer::destroy() {
-    glfwTerminate();
+    
 }
 

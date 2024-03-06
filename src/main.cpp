@@ -12,11 +12,10 @@ int main(int argc, const char** argv) {
     // DataEntry* de = DataEntry::readText(text);
     // de->prettyPrint(cout); cout << "\n";
     
-    Registry r;
-    r.init();
 
     Game g;
     g.init();
+    Registry::init();
     g.run();
     g.destory();
     return 0;

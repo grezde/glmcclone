@@ -37,6 +37,8 @@ using std::map;
     #define ERR_EXIT(x) do{ cerr << "FATAL ERROR: " << x << "\n"; exit(1); } while(0)
 #endif
 
+// FILE SYSTEM
+
 vector<u8> readFileBytes(const char* filename);
 string readFileString(const char* filename);
 bool fileExists(const char* filename);
@@ -44,5 +46,8 @@ bool fileExists(const char* filename);
 struct FileEntry {
     bool isDir;
     string name;
+    bool hasExtension(const string& extension) const;
+    void removeExtension(u32 extensionSize);
 };
 vector<FileEntry> readFolder(const char* name);
+vector<FileEntry> readFolderRecursively(const char* name);

@@ -30,6 +30,22 @@ namespace shader {
     void setMat4(const char* name, const glm::mat4& value);
 };
 
+namespace window {
+    extern glm::vec4 clearColor;
+    extern GLFWwindow* window;
+    extern i32 width, height;
+    extern const char* title;
+    extern bool disabledCursor;
+    extern glm::vec2 mousePos;
+    
+    void init(i32 width, i32 height, const char* title);
+    bool isPressed(i32 key);
+    void beginDrawing();
+    void endDrawing();
+    void toggleCursor();
+    void destroy();
+};
+
 // Simple Shader Implementation
 struct SimpleVertex {
     glm::vec3 position;
@@ -54,14 +70,13 @@ struct SimpleMesh {
 
 // Renderer implementation
 struct Renderer {
-    GLFWwindow* window;
-    i32 width, height;
-    const char* title;
+    
+    glm::vec2 cameraAngle = { 0.0f, 0.0f };
+    glm::vec3 cameraPos = { 10.0f, 0, 10.0f };
+    
     vector<u32> shaders;
     vector<u32> textures;
     vector<SimpleMesh> meshes;
-    glm::vec2 cameraAngle = { 0.0f, 0.0f };
-    glm::vec3 cameraPos = { 10.0f, 0, 10.0f };
 
     void makeAtlas();
     void init(i32 width, i32 height, const char* title);
