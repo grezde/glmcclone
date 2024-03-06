@@ -3,6 +3,8 @@
 #include "data.hpp"
 #include "renderer.hpp"
 #include <cstring>
+#include <stb_image.h>
+#include <stb_image_write.h>
 
 registry<Texture> Registry::textures;
 registry<Block*> Registry::blocks;
@@ -10,56 +12,48 @@ registry<BlockModelConstructor> Registry::blockModels;
 registry<u32> Registry::glTextures;
 registry<u32> Registry::shaders;
 
-Block::Block(string blockName, DataEntry* de) : name(blockName) {
-    if(!de->isMap()) return;
-    DataEntry* modelName = de->schild("model");
-    if(modelName == nullptr || !modelName->isStringable() || !Registry::blockModels.has(modelName->str)) return;
-    model = Registry::blockModels[modelName->str](de);
-    DataEntry* solidityDE = de->schild("solidity");
-    if(solidityDE == nullptr) solidity = 0b111111;
-    else solidity = solidityDE->geti64(); // TODO: verify solidity
-}
-
-BlockModel* noModelConstructor(DataEntry* de) {
-    return new NoModel();
-}
-
-BlockModel* cubeModelConstructor(DataEntry* de) {
-    CubeModel* model = new CubeModel();
-    DataEntry* texturesBlock = de->schild("textures");
-    if(!texturesBlock || !texturesBlock->isMap()) 
-        return model;
-    for(const std::pair<string, DataEntry*> p : texturesBlock->dict) {
-        u8 set = 0b000000;
-        if(!p.second->isStringable())
-            continue;
-        if(p.first == "all")        set = 0b111111;
-        else if(p.first == "east")  set = 0b000001;
-        else if(p.first == "south") set = 0b000010;
-        else if(p.first == "west")  set = 0b000100;
-        else if(p.first == "north") set = 0b001000;
-        else if(p.first == "up")    set = 0b010000;
-        else if(p.first == "down")  set = 0b100000;
-        else if(p.first == "y")     set = 0b110000;
-        else if(p.first == "tops")  set = 0b110000;
-        else if(p.first == "x")     set = 0b000101;
-        else if(p.first == "z")     set = 0b001010;
-        else if(p.first == "sides") set = 0b001111;
-        if(!Registry::textures.has(p.second->str))
-            continue;
-        Texture texture = Registry::textures[p.second->str];
-        for(u8 dir = 0; dir < 6; dir++)
-            if(set & (1 << dir)) {
-                model->faces[dir] = texture.id;
-            }
+u32 Registry::makeAtlas(const string& folder) {
+    // u32 is the color
+    u32* data = (u32*)malloc(4*ATLASTILE*ATLASTILE*ATLASDIM*ATLASDIM);
+    memset(data, 0, 4*ATLASTILE*ATLASTILE*ATLASDIM*ATLASDIM);
+    for(u32 y=0; y<ATLASTILE; y++) for(u32 x=0; x<ATLASTILE; x++) {
+        u32 mag = (x < 8) ^ (y < 8);
+        data[y*ATLASTILE*ATLASDIM+x] = mag ? 0xFFFF00FF : 0xFF000000;
     }
-    return model;
-}
-
-
-
-void Registry::makeAtlas() {
-    
+    u32 index = 1;
+    for(auto& p : textures.names) {
+        if(folder.size() != 0 && p.first.compare(0, folder.size(), folder) != 0)
+            continue;
+        if(p.first.size() < folder.size()+2)
+            continue;
+        if(index == ATLASTILE*ATLASTILE)
+            ERR_EXIT("Atlas too small");
+        string filename = "assets/textures/" + p.first + ".png";
+        i32 imageWidth, imageHeight, imageChannels;
+        u8* newdata = stbi_load(filename.c_str(), &imageWidth, &imageHeight, &imageChannels, 4);
+        cout << "ATLAS " << p.first << " at " << filename << ": " << imageChannels << " " << imageWidth << " " << imageHeight << "\n";
+        if(data == nullptr) ERR_EXIT("Could not load image " << p.first << ", " << filename);
+        if(imageChannels != 4 || imageWidth != ATLASTILE || imageHeight != ATLASTILE)
+            ERR_EXIT("Image not in apropriate format " << p.first);
+        for(u32 y=0; y < ATLASTILE; y++)
+        for(u32 x=0; x < ATLASTILE; x++) {
+            data[((index/ATLASDIM)*ATLASTILE + y)*ATLASTILE*ATLASDIM + (index%ATLASDIM)*ATLASTILE + x] = ((u32*)newdata)[ATLASTILE*y+x];
+        };
+        stbi_image_free(newdata);
+        index++;
+    }
+    #ifdef DEBUG
+        stbi_write_png("output/atlas_new.png", ATLASTILE*ATLASDIM, ATLASTILE*ATLASDIM, 4, data, ATLASTILE*ATLASDIM*4);
+    #endif
+    // Finally we must flip everything in acordance to OpenGL
+    for(u32 y=0; y<ATLASTILE*ATLASDIM/2; y++) for(u32 x=0; x<ATLASTILE*ATLASDIM; x++) {
+        u32 temp = data[y*ATLASTILE*ATLASDIM+x];
+        data[y*ATLASTILE*ATLASDIM+x] = data[(ATLASDIM*ATLASTILE-y-1)*ATLASTILE*ATLASDIM+x];
+        data[(ATLASDIM*ATLASTILE-y-1)*ATLASTILE*ATLASDIM+x] = temp;
+    };
+    u32 t = gl::textureFromMemory((u8*)data, ATLASDIM*ATLASTILE, ATLASDIM*ATLASTILE, 4);
+    free(data);
+    return t;
 }
 
 void Registry::init() {
@@ -88,6 +82,7 @@ void Registry::init() {
 
     // textures
     vector<FileEntry> textureFES = readFolderRecursively("assets/textures");
+    textures.add("missing", { 0, "missing" });
     for(FileEntry fe : textureFES) {
         if(!fe.hasExtension("png"))
             continue;
@@ -101,6 +96,7 @@ void Registry::init() {
 
     // blocks
     vector<FileEntry> blockFES = readFolder("assets/blocks");
+    blocks.add("air", new Block("air", nullptr));
     for(FileEntry fe : blockFES) {
         if(!fe.hasExtension("td"))
             continue;
@@ -112,6 +108,6 @@ void Registry::init() {
     }
 
     // atlas
-    makeAtlas();
+    glTextures.add("blockAtlas", makeAtlas("blocks"));
 
 }

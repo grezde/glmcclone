@@ -1,4 +1,6 @@
+#include "base.hpp"
 #include "data.hpp"
+#include <fstream>
 
 void help() {
     cout << "Usage: datatool (convert|bundle) [input file] [output file]\n";
@@ -6,11 +8,35 @@ void help() {
     cout << "  bundle - bundle a folder into a binary data file\n";
 }
 
-i32 convert(string input, string output) {
-    return 0; 
+i32 convert(string inputFilename, string outputFilename) {
+    FileEntry fe = { true, inputFilename };
+    if(fe.hasExtension("td")) {
+        DataEntry* de = DataEntry::readText(readFileString(inputFilename.c_str()));
+        if(de->type == DataEntry::ERROR)
+            ERR_EXIT("PARSE ERROR: " << de->error.message);
+        FILE* fout = fopen(outputFilename.c_str(), "wb");
+        if(!fout) ERR_EXIT("Cannot write into file " << outputFilename);
+        de->writeBinary(fout);
+        fclose(fout);
+    }
+    else if(fe.hasExtension("bd")) {
+        FILE* fin = fopen(inputFilename.c_str(), "rb");
+        DataEntry* de = DataEntry::readBinary(fin);
+        if(de->type == DataEntry::ERROR)
+            ERR_EXIT("PARSE ERROR: " << de->error.message);
+        fclose(fin);
+        
+        std::ofstream fout(outputFilename.c_str());
+        if(!fout.is_open()) ERR_EXIT("Cannot write into file " << outputFilename);
+        de->prettyPrint(fout);
+        fout.close();
+    }
+    else ERR_EXIT("File " << inputFilename << " has no data extension");
+    return 0;
 }
 
 i32 bundle(string input, string output) {
+    ERR_EXIT("Not yet implemented");
     return 0;
 }
 

@@ -167,7 +167,7 @@ void window::init(i32 width, i32 height, const char *title) {
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    //glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
     glfwSetCursorPosCallback(window, cursor_position_callback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -182,7 +182,7 @@ void window::init(i32 width, i32 height, const char *title) {
     glEnable(GL_CULL_FACE);
     glCullFace(GL_FRONT); 
     glFrontFace(GL_CW);
-    //glEnable(GL_MULTISAMPLE);  
+    //glEnable(GL_MULTISAMPLE); 
 
 }
 
@@ -205,9 +205,8 @@ void window::toggleCursor() {
 }
 
 bool window::isPressed(i32 key) {
-    return glfwGetKey(window, key) == GLFW_PRESS;
+    return glfwGetKey(window::window, key) == GLFW_PRESS;
 }
-
 
 void SimpleMesh::makeObjects() {
     using namespace gl;
@@ -230,86 +229,5 @@ void SimpleMesh::draw() {
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
     //glDrawArrays(GL_TRIANGLES, 0, 3);
-}
-
-void Renderer::makeAtlas() {
-    // u32 is the color
-    static constexpr u32 TILE = 16;
-    u32 width = 8, height=8;
-    u32* data = (u32*)malloc(4*TILE*TILE*width*height);
-    memset(data, 0, 4*TILE*TILE*width*height);
-    for(u32 y=0; y<TILE; y++) for(u32 x=0; x<TILE; x++) {
-        u32 mag = (x < 8) ^ (y < 8);
-        data[y*TILE*width+x] = mag ? 0xFFFF00FF : 0xFF000000;
-    }
-    for(u32 i=1; i<10; i++) {
-        char filename[30];
-        sprintf(filename, "textures/%u.png", i);
-        i32 imageWidth, imageHeight, imageChannels;
-        u8* newdata = stbi_load(filename, &imageWidth, &imageHeight, &imageChannels, 4);
-        if(data == nullptr) ERR_EXIT("Could not load image " << i);
-        cout << filename << ": " << imageChannels << " " << imageWidth << " " << imageHeight << "\n";
-        if(imageChannels != 4 || imageWidth != TILE || imageHeight != TILE)
-            ERR_EXIT("Image not in apropriate format " << i);
-        for(u32 y=0; y < TILE; y++)
-        for(u32 x=0; x < TILE; x++) {
-            data[((i/width)*TILE + y)*TILE*width + (i%width)*TILE + x] = ((u32*)newdata)[TILE*y+x];
-        };
-        stbi_image_free(newdata);
-    }
-    #ifdef DEBUG
-        stbi_write_png("output/atlas.png", TILE*width, TILE*height, 4, data, TILE*width*4);
-    #endif
-    // Finally we must flip everything in acordance to OpenGL
-    for(u32 y=0; y<TILE*height/2; y++)
-    for(u32 x=0; x<TILE*width; x++) {
-        u32 temp = data[y*TILE*width+x];
-        data[y*TILE*width+x] = data[(height*TILE-y-1)*TILE*width+x];
-        data[(height*TILE-y-1)*TILE*width+x] = temp;
-    };
-    textures.push_back(gl::textureFromMemory((u8*)data, width*TILE, height*TILE, 4));
-    free(data);
-}
-
-void Renderer::init(i32 width, i32 height, const char* title) {
-    
-    shaders.push_back(gl::makeProgram(
-        readFileString("assets/shaders/simple.vert.glsl"), 
-        readFileString("assets/shaders/simple.frag.glsl")
-    ));
-    shader::bind(shaders[0]);
-
-    cameraPos = glm::vec3(-1.0f, 0, 3.0f);
-    cameraAngle = glm::vec2(-3.141f/2.0f, 0);
-}
-
-void Renderer::render() {
-
-    window::beginDrawing();
-
-    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
-        std::cos(cameraAngle.x)*std::cos(cameraAngle.y),
-        std::sin(cameraAngle.y),
-        std::sin(cameraAngle.x)*std::cos(cameraAngle.y)
-    ), glm::vec3(0, 1, 0));
-    
-    glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)window::width/(f32)window::height, 0.1f, 100.0f);
-
-    shader::bind(shaders[0]);
-    shader::setMat4("view", view);
-    shader::setMat4("proj", proj);
-    gl::bindTexture(textures[0], 0);
-    shader::setTexture("tex", 0);
-    
-    for(SimpleMesh& mesh : meshes) {
-        mesh.updateUniforms();
-        mesh.draw();
-    }
-    
-    window::endDrawing();
-}
-
-void Renderer::destroy() {
-    
 }
 

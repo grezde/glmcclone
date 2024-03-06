@@ -3,35 +3,7 @@
 #include "data.hpp"
 #include "game.hpp"
 #include "renderer.hpp"
-
-struct BlockModel {
-    virtual void addmesh() = 0;
-};
-
-struct NoModel : BlockModel {
-    virtual void addmesh() {};
-};
-BlockModel* noModelConstructor(DataEntry* de);
-
-struct CubeModel : BlockModel {
-    u32 faces[6] = {};
-    virtual void addmesh() {};
-};
-BlockModel* cubeModelConstructor(DataEntry* de);
-
-typedef BlockModel* (*BlockModelConstructor)(DataEntry* de);
-
-struct Block {
-    u8 solidity;
-    BlockModel* model;
-    string name;
-    Block(string blockName, DataEntry* de);
-};
-
-struct Texture {
-    u32 id;
-    string name;
-};
+#include "world.hpp"
 
 template<typename T>
 struct registry {
@@ -42,12 +14,17 @@ struct registry {
     inline T& operator[](const string& name) { return items[names[name]]; }
     inline const T& operator[](const string& name) const { return items[names.at(name)]; }
     inline void add(const string& name, const T& value) { names[name] = items.size(); items.push_back(value); }
-
+    
     void print(std::ostream& out, const string& name) {
         out << "----------------\n" << name << ":\n";
         for(auto p : names)
             out << p.first << ": index " << p.second << "\n";
     }
+};
+
+struct Texture {
+    u32 id;
+    string name;
 };
 
 namespace Registry {
@@ -58,6 +35,8 @@ namespace Registry {
     extern registry<Texture> textures;
     extern registry<Block*> blocks;
 
-    void makeAtlas();
+    constexpr u32 ATLASDIM = 16;
+    constexpr u32 ATLASTILE = 16;
+    u32 makeAtlas(const string& folder); // Creates a texture atlas with all the files within the folder 
     void init();
 };

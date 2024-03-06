@@ -21,6 +21,7 @@ namespace gl {
     void bindTexture(u32 texture, u32 slot);
 };
 
+// Shader values
 namespace shader {
     extern u32 currentShader;
     void bind(u32 shader);
@@ -30,6 +31,8 @@ namespace shader {
     void setMat4(const char* name, const glm::mat4& value);
 };
 
+
+// GLFW window wrapper
 namespace window {
     extern glm::vec4 clearColor;
     extern GLFWwindow* window;
@@ -47,6 +50,7 @@ namespace window {
 };
 
 // Simple Shader Implementation
+
 struct SimpleVertex {
     glm::vec3 position;
     glm::vec3 color;
@@ -65,22 +69,5 @@ struct SimpleMesh {
     void makeObjects();
     void updateUniforms();
     void draw();
-
-};
-
-// Renderer implementation
-struct Renderer {
-    
-    glm::vec2 cameraAngle = { 0.0f, 0.0f };
-    glm::vec3 cameraPos = { 10.0f, 0, 10.0f };
-    
-    vector<u32> shaders;
-    vector<u32> textures;
-    vector<SimpleMesh> meshes;
-
-    void makeAtlas();
-    void init(i32 width, i32 height, const char* title);
-    void render();
-    void destroy();
 
 };

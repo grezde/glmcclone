@@ -157,24 +157,27 @@ void DataEntry::prettyPrint(std::ostream& out, u32 indent) const {
                 for(u32 i=0; i<indent+1; i++)
                     out << "   ";
                 child->prettyPrint(out, indent+1);
-                out << ",\n";
+                out << (child != list.back() ? ",\n" : "\n");
             }
             for(u32 i=0; i<indent; i++)
                 out << "   ";
             out << "]";
             break;
-        case MAP: 
+        case MAP: {
+            u32 index = 0;
             out << "{\n";
             for(const std::pair<string, DataEntry*> p : dict) {
                 for(u32 i=0; i<indent+1; i++)
                     out << "   ";
                 out << unescapeString(p.first) << ": ";
                 p.second->prettyPrint(out, indent+1);
-                out << ",\n";
+                out << (index != dict.size()-1 ? ",\n" : "\n");
+                index++;
             }
             for(u32 i=0; i<indent; i++)
                 out << "   ";
             out << "}";
+        }
             break;
         case BYTES:
             out << "BYTES";
@@ -648,7 +651,7 @@ void DataEntry::writeWithoutTag(FILE* out) {
 DataEntry* DataEntry::readWithoutTag(FILE *in, Type t) {
     #define sfread(ptr, size) do{\
         bytesRead = fread(ptr, size, 1, in);\
-        if(bytesRead != size) {\
+        if(bytesRead != 1) {\
             delete de;\
             DataEntry* de_err = new DataEntry(ERROR);\
             de_err->error = { (u32)-1, "Unexpected end of input" };\

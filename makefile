@@ -53,11 +53,11 @@ output:
 
 output/mcclone: $(folders) $(cppobjects)
 	echo "LINK   mcclone"
-	$(CPPC) $(LINKFLAGS) $(cppobjects) -o output/mcclone
+	$(CPPC) $(LINKFLAGS) $(cppobjects) -o $@
 
 output/datatool: output/datatool.o output/data.o output/base.o
 	echo "LINK   datatool" 
-	$(CPPC) $(LINKFLAGS) $^ -o output/mcclone
+	$(CPPC) $(LINKFLAGS) $^ -o $@
 
 run: output/mcclone
 	echo "RUN    mcclone"

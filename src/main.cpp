@@ -13,10 +13,8 @@ int main(int argc, const char** argv) {
     // de->prettyPrint(cout); cout << "\n";
     
 
-    Game g;
-    g.init();
-    Registry::init();
-    g.run();
-    g.destory();
+    Game::init();
+    Game::run();
+    Game::destory();
     return 0;
 }

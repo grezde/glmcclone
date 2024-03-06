@@ -1,11 +1,21 @@
 #include "game.hpp"
 #include "renderer.hpp"
+#include "resources.hpp"
+#include <GLFW/glfw3.h>
 #include <cstring>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
 #include <glm/ext/vector_int3.hpp>
 #include <stb_image.h>
 #include <stb_image_write.h>
+#include <glm/ext/matrix_float4x4.hpp>
+#include <glm/ext/matrix_projection.hpp>
+#include <glm/ext/vector_float3.hpp>
 
-Game* Game::instance = nullptr;
+bool Game::printFPS = false;
+World Game::testWorld;
+glm::vec3 Game::cameraPos = { -1.0f, 0, 3.0f };
+glm::vec2 Game::cameraAngle = { -3.141f/2.0f, 0 };
 
 void Game::processInput(f32 dt) {
     static constexpr float cameraAngleSpeed = 2.0f;
@@ -31,9 +41,6 @@ void Game::processInput(f32 dt) {
     if(escape && !prevEscape)
         window::toggleCursor();
     prevEscape = escape;
-
-    glm::vec2& cameraAngle = Game::instance->renderer.cameraAngle;
-    glm::vec3& cameraPos = Game::instance->renderer.cameraPos;
 
     glm::vec3 movementReal = movement.z * glm::vec3(std::cos(cameraAngle.x), 0, std::sin(cameraAngle.x))
             + movement.y * glm::vec3(0, 1, 0)
@@ -63,193 +70,10 @@ void Game::processInput(f32 dt) {
     lastMousePos = window::mousePos;
 }
 
-vector<BlockRenderProps> Chunk::props = {
-    // 0 is the missing texture
-    // air
-    { 0, 0, 0, 0, 0, 0, 0 },
-    // cobblestone 
-    { 1, 1, 1, 1, 1, 1, 127 },
-    // dirt
-    { 2, 2, 2, 2, 2, 2, 127 },
-    // grass
-    { 3, 3, 3, 3, 4, 2, 127 },
-    // sand
-    { 5, 5, 5, 5, 5, 5, 127 },
-    // log
-    { 6, 6, 6, 6, 7, 7, 127 },
-    // planks
-    { 8, 8, 8, 8, 8, 8, 127 },
-    // stone
-    { 9, 9, 9, 9, 9, 9, 127 },
-};
-
-enum Direction: u32 {
-    EAST = 0,
-    SOUTH = 1,
-    WEST = 2,
-    NORTH = 3,
-    UP = 4,
-    DOWN = 5,
-    DIRECTION_COUNT = 6
-};
-
-Direction directionOpposite[DIRECTION_COUNT+1] = {
-    WEST, NORTH, EAST, SOUTH,
-    DOWN, UP, DIRECTION_COUNT
-};
-
-glm::ivec3 directionVector[DIRECTION_COUNT+1] = {
-    { 1, 0, 0},
-    { 0, 0, 1},
-    {-1, 0, 0},
-    { 0, 0,-1},
-    { 0, 1, 0},
-    { 0,-1, 0},
-    { 0, 0, 0}
-};
-
-bool Chunk::inBounds(glm::ivec3 inChunkCoords) {
-    return !(
-        inChunkCoords.x < 0 || inChunkCoords.x >= (i32)CHUNKSIZE || 
-        inChunkCoords.y < 0 || inChunkCoords.y >= (i32)CHUNKSIZE ||
-        inChunkCoords.z < 0 || inChunkCoords.z >= (i32)CHUNKSIZE
-    );
-}
-
-u32 Chunk::indexOf(glm::ivec3 inChunkCoords) {
-    return inChunkCoords.x + inChunkCoords.z*CHUNKSIZE + inChunkCoords.y*CHUNKSIZE*CHUNKSIZE;
-}
-
-SimpleVertex cubeFaces[DIRECTION_COUNT*4] = {
-    { { 1, 0, 0 }, {1,1,1}, { 1, 0 } },
-    { { 1, 1, 0 }, {1,1,1}, { 1, 1 } },
-    { { 1, 1, 1 }, {1,1,1}, { 0, 1 } },
-    { { 1, 0, 1 }, {1,1,1}, { 0, 0 } },
-
-    { { 0, 0, 1 }, {1,1,1}, { 0, 0 } },
-    { { 1, 0, 1 }, {1,1,1}, { 1, 0 } },
-    { { 1, 1, 1 }, {1,1,1}, { 1, 1 } },
-    { { 0, 1, 1 }, {1,1,1}, { 0, 1 } },
-
-    { { 0, 0, 0 }, {1,1,1}, { 0, 0 } },
-    { { 0, 0, 1 }, {1,1,1}, { 1, 0 } },
-    { { 0, 1, 1 }, {1,1,1}, { 1, 1 } },
-    { { 0, 1, 0 }, {1,1,1}, { 0, 1 } },
-
-    { { 0, 0, 0 }, {1,1,1}, { 0, 0 } },
-    { { 0, 1, 0 }, {1,1,1}, { 0, 1 } },
-    { { 1, 1, 0 }, {1,1,1}, { 1, 1 } },
-    { { 1, 0, 0 }, {1,1,1}, { 1, 0 } },
-
-    { { 0, 1, 0 }, {1,1,1}, { 0, 0 } },
-    { { 0, 1, 1 }, {1,1,1}, { 0, 1 } },
-    { { 1, 1, 1 }, {1,1,1}, { 1, 1 } },
-    { { 1, 1, 0 }, {1,1,1}, { 1, 0 } },
-
-    { { 0, 0, 0 }, {1,1,1}, { 0, 0 } },
-    { { 1, 0, 0 }, {1,1,1}, { 1, 0 } },
-    { { 1, 0, 1 }, {1,1,1}, { 1, 1 } },
-    { { 0, 0, 1 }, {1,1,1}, { 0, 1 } },
-};
-
-void Chunk::makeSimpleMesh(SimpleMesh& mesh) {
-    for(u32 x=0; x<CHUNKSIZE; x++)
-    for(u32 z=0; z<CHUNKSIZE; z++)
-    for(u32 y=0; y<CHUNKSIZE; y++) {
-        u32 i = indexOf({x, y, z});
-        f32 r = (f32)rand()/(f32)RAND_MAX;
-        if(r > (f32)y/(f32)CHUNKSIZE)
-            blocks[i] = rand()%6+1;
-        else
-            blocks[i] = 0;
-    };
-
-    //mesh.vertices, mesh.indices;
-    for(u32 x=0; x<CHUNKSIZE; x++)
-    for(u32 z=0; z<CHUNKSIZE; z++)
-    for(u32 y=0; y<CHUNKSIZE; y++) {
-        glm::ivec3 pos = {x, y, z};
-        u32 i = indexOf(pos);
-        if(blocks[i] == 0)
-            continue;
-
-        // pseudo code:
-        // for direction //
-            // check if there is a block in this chunk in that direction
-            // if not, render that face
-            // get solidity of block in that direction
-            // if solidity is 0, render that face
-            // otherwise skip
-
-        for(u32 dir=0; dir<DIRECTION_COUNT; dir++) {
-            glm::ivec3 dv = directionVector[dir];
-            glm::ivec3 blockToCheck = pos + dv;
-            if(inBounds(blockToCheck)) {
-                // TODO: implement solidity
-                if(blocks[indexOf(blockToCheck)] != 0)
-                    continue;
-            }
-            //; //draw face 
-            //glm::vec3 facepos = glm::vec3(pos) + glm::vec3(0.5f, 0.5f, 0.5f) + glm::vec3(dv)*0.5f;
-            u8 textureID = props[blocks[i]].faces[dir];
-            for(u32 faceVertex=0; faceVertex<4; faceVertex++) {
-                SimpleVertex vertex = cubeFaces[dir*4+faceVertex];
-                vertex.texCoords = glm::vec2(textureID%8, 7-textureID/8)/8.0f + vertex.texCoords/8.0f;
-                vertex.position += pos;
-                mesh.vertices.push_back(vertex);
-            }
-
-            // Ambient oclusion demo
-            // TODO: the ambient oclusion sucks
-            // for each vertex we check the block on the sides on color it less the more neighbours it has
-            for(u32 faceVertex=0; faceVertex<4; faceVertex++) {
-                SimpleVertex& vertex = mesh.vertices[mesh.vertices.size()-4+faceVertex];
-                glm::vec3 g = vertex.position - glm::vec3(pos);
-                g = glm::vec3(-1, -1, -1) + 2.0f*g;
-                // g gives us one of the 8 corners, 1or -1 for each axis
-                u32 neighbours = 0;
-                glm::vec3 ns[7] = { g, {g.x, g.y, 0}, {g.x, 0, g.z}, {0, g.y, g.z}, {g.x, 0, 0}, {0,g.y,0}, {0,0,g.z} };
-                for(u32 nsi=0; nsi<7; nsi++) {
-                    glm::ivec3 nsint = ns[nsi];
-                    //cout << "{" << nsint.x << " " << nsint.y << " " << nsint.z << "} ";
-                    nsint += pos;
-                    if(inBounds(nsint)) {
-                        if(blocks[indexOf(nsint)] != 0)
-                            neighbours++;
-                    }
-                }
-                vertex.color *= 1.0f - neighbours * 0.07f;
-            }
-
-            mesh.indices.push_back(mesh.vertices.size()-4 + 0);
-            mesh.indices.push_back(mesh.vertices.size()-4 + 1);
-            mesh.indices.push_back(mesh.vertices.size()-4 + 3);
-            mesh.indices.push_back(mesh.vertices.size()-4 + 3);
-            mesh.indices.push_back(mesh.vertices.size()-4 + 1);
-            mesh.indices.push_back(mesh.vertices.size()-4 + 2);
-        }
-
-    };
-}
-
-void World::init() {
-
-}
-
-void World::draw() {
-    
-}
-
 void Game::init() {
-    printFPS = false;
     window::init(800, 600, "Hello warld");
-    renderer.init(800, 600, "Hello warld");
-    
-    renderer.makeAtlas();
+    Registry::init();
     testWorld.init();
-    renderer.meshes.push_back(SimpleMesh());
-    testChunk.makeSimpleMesh(renderer.meshes.back());
-    renderer.meshes.back().makeObjects();
 }
 
 void Game::run() {
@@ -257,6 +81,7 @@ void Game::run() {
     f32 ptime = 0.0;
     f32 fpst = 0.0f;
     u32 fpsc = 0;
+    cout << "START RUNNING\n";
 
     while(!glfwWindowShouldClose(window::window)) {
 
@@ -272,14 +97,33 @@ void Game::run() {
             fpst = 0.0f;
         }
 
-        processInput(dt);
-        renderer.render();
         glfwPollEvents();
+        processInput(dt);
+        
+        window::beginDrawing();
+
+        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
+            std::cos(cameraAngle.x)*std::cos(cameraAngle.y),
+            std::sin(cameraAngle.y),
+            std::sin(cameraAngle.x)*std::cos(cameraAngle.y)
+        ), glm::vec3(0, 1, 0));
+        
+        glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)window::width/(f32)window::height, 0.1f, 100.0f);
+
+        shader::bind(Registry::shaders["simple"]);
+        shader::setMat4("view", view);
+        shader::setMat4("proj", proj);
+        gl::bindTexture(Registry::glTextures["blockAtlas"], 0);
+        shader::setTexture("tex", 0);
+
+        testWorld.draw();
+
+        window::endDrawing();
     }
 
 }
 
 void Game::destory() {
-    renderer.destroy();
+    window::destroy();
 }
 
