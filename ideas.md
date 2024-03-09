@@ -1,6 +1,10 @@
 
 # Ideas
 
+## TODOS
+
+- Add a flip statment to the cube model
+
 ## Block data enum
 
 Block data enums are u8 enumerations that are attached to blocks.

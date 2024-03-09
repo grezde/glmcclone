@@ -5,7 +5,7 @@
 #include <unordered_map>
 #define GLM_ENABLE_EXPERIMENTAL
 #include "glm/gtx/hash.hpp"
-struct SimpleMesh;
+struct VoxelMesh;
 struct Chunk;
 
 enum Direction: u32 {
@@ -22,7 +22,7 @@ extern glm::ivec3 directionVector[DIRECTION_COUNT+1];
 
 struct BlockModel {
     struct DrawInfo {
-        SimpleMesh& mesh;
+        VoxelMesh& mesh;
         Chunk& chunk;
         glm::ivec3 blockPos;
     };
@@ -63,17 +63,22 @@ struct Chunk {
 
     static u32 indexOf(glm::ivec3 inChunkCoords);
     static bool inBounds(glm::ivec3 inChunkCoords);
-    void makeSimpleMesh(SimpleMesh& mesh);
+    //void makeSimpleMesh(SimpleMesh& mesh);
+    void makeVoxelMesh(VoxelMesh& mesh);
 };
 
 struct WorldChunk {
     glm::ivec3 coords;
     Chunk chunk;
-    SimpleMesh mesh;
+    VoxelMesh mesh;
 };
 
 struct World {
     std::unordered_map<glm::ivec3, WorldChunk*> chunks;
+    glm::ivec3 centerChunk;
+    void updateRenderChunks();
     void init();
+    void update(f32 time, f32 dt);
     void draw();
+    void destroy();
 };

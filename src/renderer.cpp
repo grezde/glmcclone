@@ -43,7 +43,17 @@ u32 gl::generateVAO() {
 }
 
 void gl::addAttribToVAO(u32 index, i32 size, u32 type, i32 stride, u32 offset) {
-    glVertexAttribPointer(index, size, type, GL_FALSE, stride, (void*)(u64)offset);
+    switch(type) {
+        case GL_UNSIGNED_INT:
+            glVertexAttribIPointer(index, size, type, GL_FALSE, (void*)(u64)offset);
+            break;
+        case GL_FLOAT:
+            glVertexAttribPointer(index, size, type, GL_FALSE, stride, (void*)(u64)offset);
+            break;
+        default:
+            ERR_EXIT("UNCUGHT CASE HERE");
+            break;
+    }
     glEnableVertexAttribArray(index);
 }
 
@@ -135,7 +145,9 @@ void shader::setMat4(const char* name, const glm::mat4& value) {
     glUniformMatrix4fv(glGetUniformLocation(currentShader, name), 1, GL_FALSE, glm::value_ptr(value));
 }
 
-
+void shader::setIvec3(const char* name, const glm::ivec3& value) {
+    glUniform3iv(glGetUniformLocation(currentShader, name), 1, glm::value_ptr(value));
+}
 
 static void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     (void) window;
@@ -226,6 +238,28 @@ void SimpleMesh::updateUniforms() {
 }
 
 void SimpleMesh::draw() {
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
+    //glDrawArrays(GL_TRIANGLES, 0, 3);
+}
+
+
+void VoxelMesh::makeObjects() {
+    using namespace gl;
+    VBO = generateVBO(vertices.data(), vertices.size()*sizeof(*vertices.data()));
+    VAO = generateVAO();
+    if(sizeof(VoxelVertex) != 8)
+        ERR_EXIT("assertion of size failed: 8 != " << sizeof(VoxelVertex));
+    addAttribToVAO(0, 1, GL_UNSIGNED_INT, sizeof(VoxelVertex), 0);
+    addAttribToVAO(1, 1, GL_UNSIGNED_INT, sizeof(VoxelVertex), 4);
+    EBO = generateEBO(indices);
+}
+
+void VoxelMesh::updateUniforms() {
+    shader::setIvec3("chunkCoords", chunkCoords);
+}
+
+void VoxelMesh::draw() {
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
     //glDrawArrays(GL_TRIANGLES, 0, 3);

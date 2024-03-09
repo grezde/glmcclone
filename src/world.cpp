@@ -1,4 +1,5 @@
 #include "world.hpp"
+#include "renderer.hpp"
 #include "resources.hpp"
 
 const Direction directionOpposite[DIRECTION_COUNT+1] = {
@@ -64,6 +65,38 @@ SimpleVertex cubeFaces[DIRECTION_COUNT*4] = {
     { { 0, 0, 1 }, {1,1,1}, { 0, 1 } },
 };
 
+VoxelVertex cubeFacesVV[DIRECTION_COUNT*4] = {
+    { 0, 0,   1, 0, 0,   0,    1, 0 },
+    { 0, 0,   1, 1, 0,   0,    1, 1 },
+    { 0, 0,   1, 1, 1,   0,    0, 1 },
+    { 0, 0,   1, 0, 1,   0,    0, 0 },
+
+    { 0, 0,   0, 0, 1,   0,    0, 0 },
+    { 0, 0,   1, 0, 1,   0,    1, 0 },
+    { 0, 0,   1, 1, 1,   0,    1, 1 },
+    { 0, 0,   0, 1, 1,   0,    0, 1 },
+
+    { 0, 0,   0, 0, 0,   0,    0, 0 },
+    { 0, 0,   0, 0, 1,   0,    1, 0 },
+    { 0, 0,   0, 1, 1,   0,    1, 1 },
+    { 0, 0,   0, 1, 0,   0,    0, 1 },
+
+    { 0, 0,   0, 0, 0,   0,    0, 0 },
+    { 0, 0,   0, 1, 0,   0,    0, 1 },
+    { 0, 0,   1, 1, 0,   0,    1, 1 },
+    { 0, 0,   1, 0, 0,   0,    1, 0 },
+
+    { 0, 0,   0, 1, 0,   0,    0, 0 },
+    { 0, 0,   0, 1, 1,   0,    0, 1 },
+    { 0, 0,   1, 1, 1,   0,    1, 1 },
+    { 0, 0,   1, 1, 0,   0,    1, 0 },
+
+    { 0, 0,   0, 0, 0,   0,    0, 0 },
+    { 0, 0,   1, 0, 0,   0,    1, 0 },
+    { 0, 0,   1, 0, 1,   0,    1, 1 },
+    { 0, 0,   0, 0, 1,   0,    0, 1 },
+};
+
 BlockModel* cubeModelConstructor(DataEntry* de) {
     CubeModel* model = new CubeModel();
     DataEntry* texturesBlock = de->schild("textures");
@@ -117,18 +150,23 @@ void CubeModel::addToMesh(BlockModel::DrawInfo drawinfo) {
         //glm::vec3 facepos = glm::vec3(pos) + glm::vec3(0.5f, 0.5f, 0.5f) + glm::vec3(dv)*0.5f;
         u8 textureID = faces[dir];
         for(u32 faceVertex=0; faceVertex<4; faceVertex++) {
-            SimpleVertex vertex = cubeFaces[dir*4+faceVertex];
-            vertex.texCoords = glm::vec2(textureID%16, 15-textureID/16)/16.0f + vertex.texCoords/16.0f;
-            vertex.position += drawinfo.blockPos;
-            drawinfo.mesh.vertices.push_back(vertex);
+            VoxelVertex vv = cubeFacesVV[dir*4+faceVertex];
+            u32 u = vv.u + textureID % Registry::ATLASDIM;
+            u32 v = vv.v + Registry::ATLASDIM-1 - textureID/Registry::ATLASDIM;
+            u32 x = vv.x + drawinfo.blockPos.x;
+            u32 y = vv.y + drawinfo.blockPos.y;
+            u32 z = vv.z + drawinfo.blockPos.z;
+            vv.pos_ao = 0*64*64*64 + x*64*64 + y*64 + z;
+            vv.texCoords = u*256 + v;
+            drawinfo.mesh.vertices.push_back(vv);
         }
 
         // Ambient oclusion demo
         // TODO: the ambient oclusion sucks
         // for each vertex we check the block on the sides on color it less the more neighbours it has
         for(u32 faceVertex=0; faceVertex<4; faceVertex++) {
-            SimpleVertex& vertex = drawinfo.mesh.vertices[drawinfo.mesh.vertices.size()-4+faceVertex];
-            glm::vec3 g = vertex.position - glm::vec3(drawinfo.blockPos);
+            VoxelVertex& vertex = drawinfo.mesh.vertices[drawinfo.mesh.vertices.size()-4+faceVertex];
+            glm::vec3 g = glm::vec3(vertex.x, vertex.y, vertex.z) - glm::vec3(drawinfo.blockPos);
             g = glm::vec3(-1, -1, -1) + 2.0f*g;
             // g gives us one of the 8 corners, 1or -1 for each axis
             u32 neighbours = 0;
@@ -142,7 +180,13 @@ void CubeModel::addToMesh(BlockModel::DrawInfo drawinfo) {
                         neighbours++;
                 }
             }
-            vertex.color *= 1.0f - neighbours * 0.07f;
+            //vertex.ao = neighbours;
+            //cout << vertex.x << " " << vertex.y << " " << vertex.z << " -> ";
+            vertex.pos_ao = neighbours*64*64*64 + vertex.pos_ao;
+            //cout << (vertex.pos_ao % 64) << " " <<
+            //    ((vertex.pos_ao/64) % 64) << " " <<
+            //    ((vertex.pos_ao/64/64) % 64) << " " <<
+            //    ((vertex.pos_ao/64/64/64) % 8) << "\n";
         }
 
         drawinfo.mesh.indices.push_back(drawinfo.mesh.vertices.size()-4 + 0);
@@ -180,7 +224,7 @@ void Chunk::makeRandom() {
     };
 }
 
-void Chunk::makeSimpleMesh(SimpleMesh& mesh) {
+void Chunk::makeVoxelMesh(VoxelMesh& mesh) {
 
     BlockModel::DrawInfo di = { mesh, *this, {0,0,0} };
     //mesh.vertices, mesh.indices;
@@ -198,16 +242,28 @@ void Chunk::makeSimpleMesh(SimpleMesh& mesh) {
     };
 }
 
+void World::updateRenderChunks() {
+
+}
+
 void World::init() {
-    glm::ivec3 p = {0, 0, 1};
-    chunks[p] = new WorldChunk { 
-        .coords = { 0,0,1 }, 
-        .chunk = Chunk(), 
-        .mesh = SimpleMesh() 
-    };
-    chunks[p]->chunk.makeRandom();
-    chunks[p]->chunk.makeSimpleMesh(chunks[p]->mesh);
-    chunks[p]->mesh.makeObjects();
+    // 300 chunks got 25 fps with simple shader and pretty good laptop gpu
+    // and a very long load time (probabily transfering from cpu to gpu)
+
+    for(u32 x=0; x<5; x++) for(u32 z=0; z<5; z++) for(u32 y=0; y<1; y++) {
+        glm::ivec3 p = {x, y, z};
+        
+        WorldChunk* wc = new WorldChunk { 
+            .coords = p, 
+            .chunk = Chunk(), 
+            .mesh = VoxelMesh() 
+        };
+        wc->chunk.makeRandom();
+        wc->mesh.chunkCoords = p;
+        wc->chunk.makeVoxelMesh(wc->mesh);
+        wc->mesh.makeObjects();
+        chunks[p] = wc;
+    }
 }
 
 void World::draw() {
@@ -215,4 +271,12 @@ void World::draw() {
         p.second->mesh.updateUniforms();
         p.second->mesh.draw();
     }
+}
+
+void World::update(f32 time, f32 dt) {
+
+}
+
+void World::destroy() {
+
 }

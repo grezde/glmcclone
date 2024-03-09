@@ -12,7 +12,7 @@
 #include <glm/ext/matrix_projection.hpp>
 #include <glm/ext/vector_float3.hpp>
 
-bool Game::printFPS = false;
+bool Game::printFPS = true;
 World Game::testWorld;
 glm::vec3 Game::cameraPos = { -1.0f, 0, 3.0f };
 glm::vec2 Game::cameraAngle = { -3.141f/2.0f, 0 };
@@ -71,9 +71,11 @@ void Game::processInput(f32 dt) {
 }
 
 void Game::init() {
-    window::init(800, 600, "Hello warld");
+    window::init(1200, 900, "Hello warld");
     Registry::init();
     testWorld.init();
+    window::beginDrawing();
+    window::endDrawing();
 }
 
 void Game::run() {
@@ -108,9 +110,9 @@ void Game::run() {
             std::sin(cameraAngle.x)*std::cos(cameraAngle.y)
         ), glm::vec3(0, 1, 0));
         
-        glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)window::width/(f32)window::height, 0.1f, 100.0f);
+        glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)window::width/(f32)window::height, 0.01f, 1000.0f);
 
-        shader::bind(Registry::shaders["simple"]);
+        shader::bind(Registry::shaders["voxel"]);
         shader::setMat4("view", view);
         shader::setMat4("proj", proj);
         gl::bindTexture(Registry::glTextures["blockAtlas"], 0);

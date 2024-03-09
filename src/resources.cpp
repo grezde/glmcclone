@@ -34,7 +34,7 @@ void Registry::addToAtlas(u32 *atlasData, u32 &index, const string& folder) {
         string filename = "assets/textures/" + p.first + ".png";
         i32 imageWidth, imageHeight, imageChannels;
         u8* newdata = stbi_load(filename.c_str(), &imageWidth, &imageHeight, &imageChannels, 4);
-        cout << "ATLAS " << p.first << " at " << filename << ": " << imageChannels << " " << imageWidth << " " << imageHeight << "\n";
+        // cout << "ATLAS " << p.first << " at " << filename << ": " << imageChannels << " " << imageWidth << " " << imageHeight << "\n";
         if(newdata == nullptr) ERR_EXIT("Could not load image " << p.first << ", " << filename);
         if(imageWidth != ATLASTILE || imageHeight != ATLASTILE)
             ERR_EXIT("Image not in apropriate format " << p.first);
@@ -50,7 +50,7 @@ void Registry::addToAtlas(u32 *atlasData, u32 &index, const string& folder) {
     }
 }
 
-u32 Registry::finishAtlas(u32 *atlasData) {
+u32 Registry::finishAtlas(u32* atlasData) {
     #ifdef DEBUG
         stbi_write_png("output/atlas_new.png", ATLASTILE*ATLASDIM, ATLASTILE*ATLASDIM, 4, atlasData, ATLASTILE*ATLASDIM*4);
     #endif
@@ -66,16 +66,15 @@ u32 Registry::finishAtlas(u32 *atlasData) {
 }
 
 void addBlockToRegistry(DataEntry* de, const string& name) {
-    if(!de || !de->isMap()) { cout << "srs?\n"; return; }
+    if(!de || !de->isMap()) return;
     if(!de->has("variants")) {
         Registry::blocks.add(name, new Block(name, de));
         return;
     }
     DataEntry* variants = de->child("variants");
     de->dict.erase(de->dict.find("variants"));
-    if(!variants->isMap()) { cout << "!!!!!!!!! wimped out\n"; return; }
+    if(!variants->isMap()) return;
     for(const std::pair<string, DataEntry*> p : variants->dict) {
-        cout << "!!!! VARIANT OF " << name << " IS " << p.first << "\n";
         string variantName = name + "/" + p.first;
         DataEntry* variantDE = de->copy();
         variantDE->mergeStructure(p.second);
@@ -130,6 +129,7 @@ void Registry::init() {
     // enums 
     DataEntry* enumsDE = DataEntry::readText(readFileString("assets/enums.td"));
     if(enumsDE->isMap()) {
+        // TODO: what is this warning
         for(const std::pair<string, DataEntry*>& p : enumsDE->dict) {
             if(!p.second->isListable())
                 continue;
@@ -161,8 +161,8 @@ void Registry::init() {
         delete de;
     }
 
-    cout << "REGISTRY:\n";
-    shaders.print(cout, "shaders");
-    blocks.print(cout, "blocks");
+    // cout << "REGISTRY:\n";
+    // shaders.print(cout, "shaders");
+    // blocks.print(cout, "blocks");
 
 }
