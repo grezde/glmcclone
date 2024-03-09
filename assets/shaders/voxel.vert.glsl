@@ -10,15 +10,20 @@ uniform ivec3 chunkCoords;
 uniform mat4 view;
 uniform mat4 proj;
 
+const uint CHUNKSIZE = 32;
+const uint ATLASDIM = 16;
+const float AO_INTENSITY = 0.07;
+
 void main() {
-    uint z = pos_ao % 64;
-    uint y = (pos_ao/64) % 64;
-    uint x = (pos_ao/64/64) % 64;
-    uint ao = (pos_ao/64/64/64) % 8;
-    uint v = texCoords % 256;
-    uint u = (texCoords/256) % 256;
-    vec3 inPosition = vec3(0, y, z) + vec3(chunkCoords) * 32.0;
+    uint x  = (pos_ao & 0x00003F);
+    uint y  = (pos_ao & 0x000FC0) >> 6;
+    uint z  = (pos_ao & 0x03F000) >> 12;
+    uint ao = (pos_ao & 0x3C0000) >> 18;
+    uint v = (texCoords & 0x00FF);
+    uint u = (texCoords & 0xFF00) >> 8;
+    
+    vec3 inPosition = vec3(x, y, z) + vec3(chunkCoords) * 32.0;
     gl_Position = proj * view * vec4(inPosition, 1.0);
-    fragColor = vec3(1, 1, 1) * (1 - ao*0.06) * vec3(float(u), float(v), 16.0)/16.0;
-    outTexCoord = vec2(u, v)/16;
+    fragColor = vec3(1, 1, 1) * (1 - ao * AO_INTENSITY);
+    outTexCoord = vec2(u, v) / ATLASDIM;
 }

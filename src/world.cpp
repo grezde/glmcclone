@@ -65,36 +65,41 @@ SimpleVertex cubeFaces[DIRECTION_COUNT*4] = {
     { { 0, 0, 1 }, {1,1,1}, { 0, 1 } },
 };
 
-VoxelVertex cubeFacesVV[DIRECTION_COUNT*4] = {
-    { 0, 0,   1, 0, 0,   0,    1, 0 },
-    { 0, 0,   1, 1, 0,   0,    1, 1 },
-    { 0, 0,   1, 1, 1,   0,    0, 1 },
-    { 0, 0,   1, 0, 1,   0,    0, 0 },
+struct VoxelVertexIntermediary {
+    u32 x, y, z;
+    u32 u, v;
+};
 
-    { 0, 0,   0, 0, 1,   0,    0, 0 },
-    { 0, 0,   1, 0, 1,   0,    1, 0 },
-    { 0, 0,   1, 1, 1,   0,    1, 1 },
-    { 0, 0,   0, 1, 1,   0,    0, 1 },
+VoxelVertexIntermediary cubeFacesVV[DIRECTION_COUNT*4] = {
+    { 1, 0, 0, 1, 0 },
+    { 1, 1, 0, 1, 1 },
+    { 1, 1, 1, 0, 1 },
+    { 1, 0, 1, 0, 0 },
 
-    { 0, 0,   0, 0, 0,   0,    0, 0 },
-    { 0, 0,   0, 0, 1,   0,    1, 0 },
-    { 0, 0,   0, 1, 1,   0,    1, 1 },
-    { 0, 0,   0, 1, 0,   0,    0, 1 },
+    { 0, 0, 1, 0, 0 },
+    { 1, 0, 1, 1, 0 },
+    { 1, 1, 1, 1, 1 },
+    { 0, 1, 1, 0, 1 },
 
-    { 0, 0,   0, 0, 0,   0,    0, 0 },
-    { 0, 0,   0, 1, 0,   0,    0, 1 },
-    { 0, 0,   1, 1, 0,   0,    1, 1 },
-    { 0, 0,   1, 0, 0,   0,    1, 0 },
+    { 0, 0, 0, 0, 0 },
+    { 0, 0, 1, 1, 0 },
+    { 0, 1, 1, 1, 1 },
+    { 0, 1, 0, 0, 1 },
 
-    { 0, 0,   0, 1, 0,   0,    0, 0 },
-    { 0, 0,   0, 1, 1,   0,    0, 1 },
-    { 0, 0,   1, 1, 1,   0,    1, 1 },
-    { 0, 0,   1, 1, 0,   0,    1, 0 },
+    { 0, 0, 0, 0, 0 },
+    { 0, 1, 0, 0, 1 },
+    { 1, 1, 0, 1, 1 },
+    { 1, 0, 0, 1, 0 },
 
-    { 0, 0,   0, 0, 0,   0,    0, 0 },
-    { 0, 0,   1, 0, 0,   0,    1, 0 },
-    { 0, 0,   1, 0, 1,   0,    1, 1 },
-    { 0, 0,   0, 0, 1,   0,    0, 1 },
+    { 0, 1, 0, 0, 0 },
+    { 0, 1, 1, 0, 1 },
+    { 1, 1, 1, 1, 1 },
+    { 1, 1, 0, 1, 0 },
+
+    { 0, 0, 0, 0, 0 },
+    { 1, 0, 0, 1, 0 },
+    { 1, 0, 1, 1, 1 },
+    { 0, 0, 1, 0, 1 },
 };
 
 BlockModel* cubeModelConstructor(DataEntry* de) {
@@ -150,14 +155,16 @@ void CubeModel::addToMesh(BlockModel::DrawInfo drawinfo) {
         //glm::vec3 facepos = glm::vec3(pos) + glm::vec3(0.5f, 0.5f, 0.5f) + glm::vec3(dv)*0.5f;
         u8 textureID = faces[dir];
         for(u32 faceVertex=0; faceVertex<4; faceVertex++) {
-            VoxelVertex vv = cubeFacesVV[dir*4+faceVertex];
-            u32 u = vv.u + textureID % Registry::ATLASDIM;
-            u32 v = vv.v + Registry::ATLASDIM-1 - textureID/Registry::ATLASDIM;
-            u32 x = vv.x + drawinfo.blockPos.x;
-            u32 y = vv.y + drawinfo.blockPos.y;
-            u32 z = vv.z + drawinfo.blockPos.z;
-            vv.pos_ao = 0*64*64*64 + x*64*64 + y*64 + z;
-            vv.texCoords = u*256 + v;
+            VoxelVertexIntermediary vvi = cubeFacesVV[dir*4+faceVertex];
+            vvi.u += textureID % Registry::ATLASDIM;
+            vvi.v += Registry::ATLASDIM-1 - textureID/Registry::ATLASDIM;
+            vvi.x += drawinfo.blockPos.x;
+            vvi.y += drawinfo.blockPos.y;
+            vvi.z += drawinfo.blockPos.z;
+            VoxelVertex vv;
+            vv.pos_ao = vvi.x | (vvi.y << 6) | (vvi.z << 12);
+            //vv.pos_ao = 0*64*64*64 + vvi.x*64*64 + vvi.y*64 + vvi.z;
+            vv.texCoords = vvi.u*256 + vvi.v;
             drawinfo.mesh.vertices.push_back(vv);
         }
 
@@ -166,7 +173,7 @@ void CubeModel::addToMesh(BlockModel::DrawInfo drawinfo) {
         // for each vertex we check the block on the sides on color it less the more neighbours it has
         for(u32 faceVertex=0; faceVertex<4; faceVertex++) {
             VoxelVertex& vertex = drawinfo.mesh.vertices[drawinfo.mesh.vertices.size()-4+faceVertex];
-            glm::vec3 g = glm::vec3(vertex.x, vertex.y, vertex.z) - glm::vec3(drawinfo.blockPos);
+            glm::vec3 g = glm::vec3(/*vertex.x, vertex.y, vertex.z*/) - glm::vec3(drawinfo.blockPos);
             g = glm::vec3(-1, -1, -1) + 2.0f*g;
             // g gives us one of the 8 corners, 1or -1 for each axis
             u32 neighbours = 0;
@@ -182,7 +189,7 @@ void CubeModel::addToMesh(BlockModel::DrawInfo drawinfo) {
             }
             //vertex.ao = neighbours;
             //cout << vertex.x << " " << vertex.y << " " << vertex.z << " -> ";
-            vertex.pos_ao = neighbours*64*64*64 + vertex.pos_ao;
+            //vertex.pos_ao = neighbours*64*64*64 + vertex.pos_ao;
             //cout << (vertex.pos_ao % 64) << " " <<
             //    ((vertex.pos_ao/64) % 64) << " " <<
             //    ((vertex.pos_ao/64/64) % 64) << " " <<
@@ -249,7 +256,7 @@ void World::updateRenderChunks() {
 void World::init() {
     // 300 chunks got 25 fps with simple shader and pretty good laptop gpu
     // and a very long load time (probabily transfering from cpu to gpu)
-
+    // Using reduced memory, I got it to 40 fps (at full battery)
     for(u32 x=0; x<5; x++) for(u32 z=0; z<5; z++) for(u32 y=0; y<1; y++) {
         glm::ivec3 p = {x, y, z};
         

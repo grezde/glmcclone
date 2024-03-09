@@ -3,7 +3,11 @@
 
 ## TODOS
 
-- Add a flip statment to the cube model
+- Check faces on chunk edges
+- Add a a direction parameter to the faces of the cube model
+- 
+- Implement multi-threading for saving, rendering and updating
+- Consider adding multiplayer once threading is done
 
 ## Block data enum
 

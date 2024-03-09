@@ -77,25 +77,8 @@ struct SimpleMesh {
 // Voxel Shader implemetation
 
 struct VoxelVertex {
-    union {
-        struct {
-            u32 padding0 : 10;
-            u32 ao : 4;
-            u32 x : 6;
-            u32 y : 6;
-            u32 z : 6;
-        };
-        u32 pos_ao;
-    };
-
-    union {
-        struct {
-            u32 padding1 : 16;
-            u32 u : 8;
-            u32 v : 8;
-        };
-        u32 texCoords;
-    };
+    u32 pos_ao;
+    u32 texCoords;
 };
 
 struct VoxelMesh {

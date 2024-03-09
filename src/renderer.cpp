@@ -45,7 +45,7 @@ u32 gl::generateVAO() {
 void gl::addAttribToVAO(u32 index, i32 size, u32 type, i32 stride, u32 offset) {
     switch(type) {
         case GL_UNSIGNED_INT:
-            glVertexAttribIPointer(index, size, type, GL_FALSE, (void*)(u64)offset);
+            glVertexAttribIPointer(index, size, type, stride, (void*)(u64)offset);
             break;
         case GL_FLOAT:
             glVertexAttribPointer(index, size, type, GL_FALSE, stride, (void*)(u64)offset);
