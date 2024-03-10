@@ -23,7 +23,8 @@ extern glm::ivec3 directionVector[DIRECTION_COUNT+1];
 struct BlockModel {
     struct DrawInfo {
         VoxelMesh& mesh;
-        Chunk& chunk;
+        const Chunk& chunk;
+        const Chunk* neighbours[DIRECTION_COUNT];
         glm::ivec3 blockPos;
     };
     virtual void addToMesh(DrawInfo drawinfo) = 0;
@@ -64,7 +65,7 @@ struct Chunk {
     static u32 indexOf(glm::ivec3 inChunkCoords);
     static bool inBounds(glm::ivec3 inChunkCoords);
     //void makeSimpleMesh(SimpleMesh& mesh);
-    void makeVoxelMesh(VoxelMesh& mesh);
+    void makeVoxelMesh(VoxelMesh& mesh, Chunk* neighbours[6]) const;
 };
 
 struct WorldChunk {

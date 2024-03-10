@@ -1,6 +1,7 @@
 #include "world.hpp"
 #include "renderer.hpp"
 #include "resources.hpp"
+#include <glm/ext/vector_int3.hpp>
 
 const Direction directionOpposite[DIRECTION_COUNT+1] = {
     WEST, NORTH, EAST, SOUTH,
@@ -19,6 +20,7 @@ glm::ivec3 directionVector[DIRECTION_COUNT+1] = {
 
 
 Block::Block(string blockName, DataEntry* de) : name(blockName) {
+    solidity = 0;
     if(!de || !de->isMap()) return;
     DataEntry* modelName = de->schild("model");
     if(modelName == nullptr || !modelName->isStringable() || !Registry::blockModels.has(modelName->str)) return;
@@ -145,14 +147,17 @@ void CubeModel::addToMesh(BlockModel::DrawInfo drawinfo) {
 
     for(u32 dir=0; dir<DIRECTION_COUNT; dir++) {
         glm::ivec3 dv = directionVector[dir];
-        glm::ivec3 blockToCheck = drawinfo.blockPos + dv;
-        if(drawinfo.chunk.inBounds(blockToCheck)) {
-            // TODO: implement solidity
-            if(drawinfo.chunk.blocks[drawinfo.chunk.indexOf(blockToCheck)] != 0)
-                continue;
-        }
-        //; //draw face 
-        //glm::vec3 facepos = glm::vec3(pos) + glm::vec3(0.5f, 0.5f, 0.5f) + glm::vec3(dv)*0.5f;
+        Chunk::blockID bid = 0;
+        if(drawinfo.chunk.inBounds(drawinfo.blockPos + dv))
+            bid = drawinfo.chunk.blocks[Chunk::indexOf(drawinfo.blockPos + dv)];
+        else if(drawinfo.neighbours[dir] != nullptr)
+            bid = drawinfo.neighbours[dir]->blocks[Chunk::indexOf(drawinfo.blockPos + dv - dv*(i32)Chunk::CHUNKSIZE)];
+        else goto draw;
+        if((Registry::blocks.items[bid]->solidity & (1<<dir)) == 0)
+            goto draw;
+        continue;
+
+        draw:
         u8 textureID = faces[dir];
         for(u32 faceVertex=0; faceVertex<4; faceVertex++) {
             VoxelVertexIntermediary vvi = cubeFacesVV[dir*4+faceVertex];
@@ -162,9 +167,8 @@ void CubeModel::addToMesh(BlockModel::DrawInfo drawinfo) {
             vvi.y += drawinfo.blockPos.y;
             vvi.z += drawinfo.blockPos.z;
             VoxelVertex vv;
-            vv.pos_ao = vvi.x | (vvi.y << 6) | (vvi.z << 12);
-            //vv.pos_ao = 0*64*64*64 + vvi.x*64*64 + vvi.y*64 + vvi.z;
-            vv.texCoords = vvi.u*256 + vvi.v;
+            vv.pos_ao    = (vvi.x) | (vvi.y << 6) | (vvi.z << 12);
+            vv.texCoords = (vvi.v) | (vvi.u << 8);
             drawinfo.mesh.vertices.push_back(vv);
         }
 
@@ -231,9 +235,12 @@ void Chunk::makeRandom() {
     };
 }
 
-void Chunk::makeVoxelMesh(VoxelMesh& mesh) {
+void Chunk::makeVoxelMesh(VoxelMesh& mesh, Chunk* neighbours[6]) const {
 
-    BlockModel::DrawInfo di = { mesh, *this, {0,0,0} };
+    BlockModel::DrawInfo di = { mesh, *this, { 
+        neighbours[0], neighbours[1], neighbours[2], 
+        neighbours[3], neighbours[4], neighbours[5]
+    }, {0,0,0} };
     //mesh.vertices, mesh.indices;
     for(di.blockPos.x=0; di.blockPos.x<(i32)CHUNKSIZE; di.blockPos.x++)
     for(di.blockPos.z=0; di.blockPos.z<(i32)CHUNKSIZE; di.blockPos.z++)
@@ -267,9 +274,22 @@ void World::init() {
         };
         wc->chunk.makeRandom();
         wc->mesh.chunkCoords = p;
-        wc->chunk.makeVoxelMesh(wc->mesh);
-        wc->mesh.makeObjects();
         chunks[p] = wc;
+    }
+
+    for(u32 x=0; x<5; x++) for(u32 z=0; z<5; z++) for(u32 y=0; y<1; y++) {
+        glm::ivec3 p = {x, y, z};
+        WorldChunk* wc = chunks[p];
+        Chunk* neighbours[6];
+        for(u32 dir=0; dir < 6; dir++) {
+            glm::ivec3 np = p + directionVector[dir];
+            if(chunks.find(np) != chunks.end())
+                neighbours[dir] = &chunks[np]->chunk;
+            else
+                neighbours[dir] = nullptr;
+        }
+        wc->chunk.makeVoxelMesh(wc->mesh, neighbours);
+        wc->mesh.makeObjects();
     }
 }
 

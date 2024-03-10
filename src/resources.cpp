@@ -161,8 +161,10 @@ void Registry::init() {
         delete de;
     }
 
-    // cout << "REGISTRY:\n";
-    // shaders.print(cout, "shaders");
-    // blocks.print(cout, "blocks");
+    //cout << "REGISTRY:\n";
+    //shaders.print(cout, "shaders");
+    //blocks.print(cout, "blocks");
+    //for(auto block : blocks.items)
+    //    cout << block->name << ": " << (u16)block->solidity << "\n";
 
 }

@@ -6,8 +6,8 @@
         z: "blocks/log_side"
     },
     variants: {
-        x: { textures: { x: "blocks/log_top" }},
-        y: { textures: { y: "blocks/log_top" }},
-        z: { textures: { z: "blocks/log_top" }},
+        "x": { textures: { x: "blocks/log_top" }},
+        "y": { textures: { y: "blocks/log_top" }},
+        "z": { textures: { z: "blocks/log_top" }},
     }
 }
