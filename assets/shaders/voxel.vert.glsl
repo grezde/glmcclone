@@ -12,15 +12,15 @@ uniform mat4 proj;
 
 const uint CHUNKSIZE = 32;
 const uint ATLASDIM = 16;
-const float AO_INTENSITY = 0.07;
+const float AO_INTENSITY = 0.06;
 
 void main() {
     uint x  = (pos_ao & 0x00003F);
     uint y  = (pos_ao & 0x000FC0) >> 6;
     uint z  = (pos_ao & 0x03F000) >> 12;
     uint ao = (pos_ao & 0x3C0000) >> 18;
-    uint v = (texCoords & 0x00FF);
-    uint u = (texCoords & 0xFF00) >> 8;
+    uint u = (texCoords & 0x00FF);
+    uint v = (texCoords & 0xFF00) >> 8;
     
     vec3 inPosition = vec3(x, y, z) + vec3(chunkCoords) * 32.0;
     gl_Position = proj * view * vec4(inPosition, 1.0);

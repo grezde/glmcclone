@@ -17,8 +17,9 @@ enum Direction: u32 {
     DOWN = 5,
     DIRECTION_COUNT = 6
 };
-extern const Direction directionOpposite[DIRECTION_COUNT+1];
-extern glm::ivec3 directionVector[DIRECTION_COUNT+1];
+extern const Direction directionOpposite[DIRECTION_COUNT];
+extern glm::ivec3 directionVector[DIRECTION_COUNT];
+extern const char* directionNames[DIRECTION_COUNT];
 
 struct BlockModel {
     struct DrawInfo {
@@ -37,11 +38,16 @@ BlockModel* noModelConstructor(DataEntry* de);
 
 struct CubeModel : BlockModel {
     u32 faces[6] = {};
+    u8 permutions[6] = {};
+    // represents the permutation of the uv coords of each face
+    // first 2 bits: where the 0,0 uv coords are
+    // the 1,1 must be on the opposite side
+    // the 3rd bit: whether after 0,0 there is 0,1 or 1,0
+    static u8 getPermutation(Direction facedir, Direction texdir, bool flip);
+    
     virtual void addToMesh(DrawInfo drawinfo);
 };
 BlockModel* cubeModelConstructor(DataEntry* de);
-
-typedef BlockModel* (*BlockModelConstructor)(DataEntry* de);
 
 struct Block {
     u8 solidity;

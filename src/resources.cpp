@@ -2,13 +2,14 @@
 #include "base.hpp"
 #include "data.hpp"
 #include "renderer.hpp"
+#include "world.hpp"
 #include <cstring>
 #include <stb_image.h>
 #include <stb_image_write.h>
 
 registry<Texture> Registry::textures;
 registry<Block*> Registry::blocks;
-registry<BlockModelConstructor> Registry::blockModels;
+registry<BlockModelRegistryItem> Registry::blockModels;
 registry<u32> Registry::glTextures;
 registry<u32> Registry::shaders;
 registry<vector<string>> Registry::enums;
@@ -86,6 +87,27 @@ void addBlockToRegistry(DataEntry* de, const string& name) {
 
 void Registry::init() {
 
+    // enums 
+    DataEntry* enumsDE = DataEntry::readText(readFileString("assets/misc/enums.td"));
+    if(enumsDE->isMap()) {
+        // TODO: what is this warning
+        for(const std::pair<string, DataEntry*>& p : enumsDE->dict) {
+            if(!p.second->isListable())
+                continue;
+            vector<string> vs;
+            u8 i = 0;
+            for(const DataEntry* item : p.second->list) {
+                if(!item->isStringable())
+                    continue;
+                vs.push_back(item->str);
+                DataEntry::enums[item->str] = i;
+                i++;
+            }
+            enums.add(p.first, vs);
+        }
+    }
+    delete enumsDE;
+
     // shaders
     vector<FileEntry> shadersFES = readFolderRecursively("assets/shaders");
     for(FileEntry& fe : shadersFES) {
@@ -117,32 +139,14 @@ void Registry::init() {
     }
 
     // block models
-    blockModels.add("none", noModelConstructor);
-    blockModels.add("cube", cubeModelConstructor);
+    blockModels.add("none", { noModelConstructor, 0, "none"});
+    blockModels.add("cube", { cubeModelConstructor, 0b111111, "cube" });
 
     // atlas
     u32* atlasData = makeAtlas();
     u32 atlasIndex = 1;
     addToAtlas(atlasData, atlasIndex, "blocks");
     glTextures.add("atlas", finishAtlas(atlasData));
-
-    // enums 
-    DataEntry* enumsDE = DataEntry::readText(readFileString("assets/enums.td"));
-    if(enumsDE->isMap()) {
-        // TODO: what is this warning
-        for(const std::pair<string, DataEntry*>& p : enumsDE->dict) {
-            if(!p.second->isListable())
-                continue;
-            vector<string> vs;
-            for(const DataEntry* item : p.second->list) {
-                if(!item->isStringable())
-                    continue;
-                vs.push_back(item->str);
-            }
-            enums.add(p.first, vs);
-        }
-    }
-    delete enumsDE;
 
     // blocks
     vector<FileEntry> blockFES = readFolder("assets/blocks");

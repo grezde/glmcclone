@@ -12,7 +12,7 @@
 #include <glm/ext/matrix_projection.hpp>
 #include <glm/ext/vector_float3.hpp>
 
-bool Game::printFPS = true;
+bool Game::printFPS = false;
 World Game::testWorld;
 glm::vec3 Game::cameraPos = { -1.0f, 0, 3.0f };
 glm::vec2 Game::cameraAngle = { -3.141f/2.0f, 0 };

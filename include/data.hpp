@@ -47,6 +47,7 @@ struct DataEntry {
     DataEntry(Type t);
     ~DataEntry();
     DataEntry* copy() const;
+    static map<string, u8> enums;
 
     static DataEntry* readFile(const string& filename);
 
@@ -67,7 +68,8 @@ struct DataEntry {
     inline bool isMap() const { return type == MAP; }
     inline bool isListable() const { return type == LIST || type == VECTOR; }
     inline bool isStringable() const { return type == STRING || type == STR_SLICE; }
-    
+    inline bool isInteger() const { return INT8 <= type && type <= UINT64; }
+
     inline bool has(const string& key) const { return dict.find(key) != dict.end(); }
     inline DataEntry* child(const string& key) { return dict[key]; }
     inline DataEntry* schild(const string& key) { return has(key) ? child(key) : nullptr; }

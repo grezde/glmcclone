@@ -28,11 +28,18 @@ struct Texture {
     string name;
 };
 
+struct BlockModelRegistryItem {
+    typedef BlockModel* (*Constructor)(DataEntry* de);
+    Constructor constructor;
+    u32 defaultSolidity;
+    string name;
+};
+
 namespace Registry {
     extern registry<u32> shaders;
     extern registry<u32> glTextures;
 
-    extern registry<BlockModelConstructor> blockModels;
+    extern registry<BlockModelRegistryItem> blockModels;
     extern registry<Texture> textures;
     extern registry<Block*> blocks;
     extern registry<vector<string>> enums;

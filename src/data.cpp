@@ -5,8 +5,9 @@
 #include <memory>
 #include <utility>
 
-// Proper tagged union in C++11
+map<string, u8> DataEntry::enums;
 
+// Proper tagged union in C++11
 DataEntry::DataEntry(Type t) {
     type = t;
     integers.int64 = 0;
@@ -697,6 +698,15 @@ DataEntry* DataEntry::readFromText(const string &text, u32& index) {
             de->integers.float64 *= std::pow(10, sign * exp);
         }
         return de;
+    }
+    else if(isValidDictEntry(text[index])) {
+        string atom = getAtom(text, index);
+        if(enums.find(atom) != enums.end()) {
+            DataEntry* de = new DataEntry(UINT8);
+            de->integers.uint8 = enums[atom];
+            return de;
+        }
+        ERR("Unexpected atom \"" + atom + "\"", );
     }
     else ERR(string("Unexpected character '") + text[index] + "'", );
 
