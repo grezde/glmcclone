@@ -21,6 +21,11 @@ extern const Direction directionOpposite[DIRECTION_COUNT];
 extern glm::ivec3 directionVector[DIRECTION_COUNT];
 extern const char* directionNames[DIRECTION_COUNT];
 
+struct AABB {
+    glm::vec3 start;
+    glm::vec3 size;
+};
+
 struct BlockModel {
     struct DrawInfo {
         VoxelMesh& mesh;

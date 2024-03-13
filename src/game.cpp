@@ -13,14 +13,17 @@
 #include <glm/ext/vector_float3.hpp>
 
 bool Game::printFPS = false;
+bool Game::inspectMode = true;
 World Game::testWorld;
 glm::vec3 Game::cameraPos = { -1.0f, 0, 3.0f };
 glm::vec2 Game::cameraAngle = { -3.141f/2.0f, 0 };
+glm::vec3 Game::cameraVel = { 0, 0, 0 };
 
 void Game::processInput(f32 dt) {
     static constexpr float cameraAngleSpeed = 2.0f;
     static constexpr float cameraSpeed = 8.0f;
     static bool prevEscape = false;
+    static bool prevI = false;
     static glm::vec2 lastMousePos = glm::vec2(0, 0);
     static bool lastMouseFirst = true;
 
@@ -40,6 +43,10 @@ void Game::processInput(f32 dt) {
     bool escape = window::isPressed(GLFW_KEY_ESCAPE);
     if(escape && !prevEscape)
         window::toggleCursor();
+    bool I = window::isPressed(GLFW_KEY_I);
+    if(I && !prevI)
+        inspectMode = !inspectMode;
+    prevI = I; 
     prevEscape = escape;
 
     glm::vec3 movementReal = movement.z * glm::vec3(std::cos(cameraAngle.x), 0, std::sin(cameraAngle.x))
@@ -102,6 +109,8 @@ void Game::run() {
         glfwPollEvents();
         processInput(dt);
         
+        testWorld.update(time, dt);
+
         window::beginDrawing();
 
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(

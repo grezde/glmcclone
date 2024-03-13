@@ -1,4 +1,5 @@
 #include "world.hpp"
+#include "game.hpp"
 #include "renderer.hpp"
 #include "resources.hpp"
 #include <cstring>
@@ -317,7 +318,6 @@ void Chunk::makeVoxelMesh(VoxelMesh& mesh, Chunk* neighbours[6]) const {
 }
 
 void World::updateRenderChunks() {
-
 }
 
 void World::init() {
@@ -360,10 +360,32 @@ void World::draw() {
     }
 }
 
+AABB playerBB = { {-0.4, -1.7, -0.4}, { 0.8, 1.95, 0.5 } };
+
 void World::update(f32 time, f32 dt) {
-    (void) time;
-    (void) dt;
-    // TODO
+    if(Game::inspectMode) {
+        Game::cameraVel = {0,0,0};
+        return;
+    }
+    Game::cameraVel += glm::vec3(0, -9.8, 0) * dt;
+    glm::vec3 newCameraPos = Game::cameraPos + Game::cameraVel * dt;
+    for(u32 i=0; i<8; i++) {
+        glm::vec3 dx = playerBB.start;
+        dx += glm::vec3((i&1)*playerBB.size.x, ((i&2)>>1)*playerBB.size.y, ((i&4)>>2)*playerBB.size.z);
+        glm::ivec3 dxi = newCameraPos + dx;
+        glm::ivec3 chunkCoords = dxi / (i32)Chunk::CHUNKSIZE;
+        glm::ivec3 blockCoords = dxi - chunkCoords*(i32)Chunk::CHUNKSIZE;
+        if(chunks.find(chunkCoords) == chunks.end())
+            continue;
+        Chunk::blockID block = chunks[chunkCoords]->chunk.blocks[Chunk::indexOf(blockCoords)];
+        if(block == 0)
+            continue;
+        else {
+            Game::cameraVel = {0,0,0};
+            return;
+        }
+    }
+    Game::cameraPos = newCameraPos;
 }
 
 void World::destroy() {
