@@ -1,6 +1,7 @@
 #pragma once
 #include "data.hpp"
 #include "renderer.hpp"
+#include <cstdlib>
 #include <glm/ext/vector_int3.hpp>
 #include <unordered_map>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -82,6 +83,7 @@ struct Chunk {
 };
 
 typedef glm::ivec4 UUID;
+inline UUID UUID_make() { return {rand(),rand(),rand(),rand()}; }
 
 struct Entity {
     u32 type;
@@ -93,7 +95,14 @@ struct Entity {
 };
 
 struct EntityModel {
+    u32 texture;
+    void setTexture(DataEntry* de);
     virtual void makeMesh(Entity* entity) = 0;
+};
+
+struct NoEntityModel : EntityModel {
+    static EntityModel* constructor(DataEntry*) { return new NoEntityModel(); }
+    virtual inline void makeMesh(Entity*) {};
 };
 
 struct CuboidsEntityModel : EntityModel {
@@ -101,6 +110,7 @@ struct CuboidsEntityModel : EntityModel {
         glm::ivec2 uv_starts[DIRECTION_COUNT];
         // TODO: add flips and orientations to the sides to this
         glm::ivec3 dimensions;
+        Cuboid(DataEntry* de);
     };
     struct AppliedCuboid {
         u32 id;
@@ -110,9 +120,10 @@ struct CuboidsEntityModel : EntityModel {
         string name;
         glm::ivec3 pivot;
         vector<AppliedCuboid> cuboids;
+        Object(const map<string, u32>& cuboidMap, const string& name, DataEntry* de);
     };
     vector<Cuboid> cuboids;
-    vector<Object> object;
+    vector<Object> objects;
 
     CuboidsEntityModel(DataEntry* de);
     static EntityModel* constructor(DataEntry* de);
@@ -134,6 +145,7 @@ struct WorldChunk {
     std::unordered_map<UUID, Entity*> entities;
     bool needsRemeshing;
     VoxelMesh mesh;
+    WorldChunk(glm::ivec3 coords) : coords(coords), chunk(), needsRemeshing(false), mesh() {}
 };
 
 struct World {

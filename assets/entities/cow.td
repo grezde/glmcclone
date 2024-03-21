@@ -1,5 +1,5 @@
 {
-    model: "cuboid_custom",
+    model: "cuboids",
     texture: "entities/cow",
     movement: "quadruped",
     aabb: { start: (-1.0, -1.0, -1.0), dims: (2.0, 2.0, 2.0) },

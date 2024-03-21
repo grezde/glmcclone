@@ -26,6 +26,7 @@ using std::cout;
 using std::cerr;
 using std::ostream;
 using std::map;
+using std::pair;
 
 #ifdef DEBUG
     inline string removeSourceBeggining(string filename) { return filename.substr(0); }

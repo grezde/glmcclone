@@ -202,34 +202,34 @@ void DataEntry::prettyPrint(std::ostream& out, u32 indent) const {
             out << "LEAF";
             break;
         case INT8:
-            out << "<b8> " << integers.int8;
+            out << "<i8> " << (i16)integers.int8;
             break;
         case INT16:
-            out << "<b16> " << integers.int16;
+            out << "<i16> " << integers.int16;
             break;
         case INT32: 
-            out << "<b32> " << integers.int32;
+            out << "<i32> " << integers.int32;
             break;
         case INT64: 
-            out << "<b64> " << integers.int64;
+            out << integers.int64;
             break;
         case UINT8:
-            out << "<b8> " << integers.uint8;
+            out << "<u8> " << (u16)integers.uint8;
             break;
         case UINT16:
-            out << "<b16> " << integers.uint16;
+            out << "<u16> " << integers.uint16;
             break;
         case UINT32: 
-            out << "<b32> " << integers.uint32;
+            out << "<u32> " << integers.uint32;
             break;
         case UINT64: 
-            out << "<b64> " << integers.uint64;
+            out << "<u64> " << integers.uint64;
             break;
         case FLOAT32: 
-            out << "<b32> " << integers.float32;
+            out << "<f32> " << integers.float32;
             break;
         case FLOAT64: 
-            out << "<b64> " << integers.float64;
+            out << "<f64> " << integers.float64;
             break;
         case CHAR: 
             out << "'" << character << "'";
@@ -659,7 +659,7 @@ DataEntry* DataEntry::readFromText(const string &text, u32& index) {
         return d;
     }
     else if(text[index] == '-' || isNum(text[index])) {
-        u8 sign = 1;
+        i64 sign = 1;
         if(text[index] == '-') {
             sign = -1;
             index++;

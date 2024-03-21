@@ -6,5 +6,6 @@
     "blocks/Planks": "Wood Planks",
     "blocks/sand": "Sand",
     "blocks/stone": "Stone",
-    "blocks/cobblestone": "Cobblestone"
+    "blocks/cobblestone": "Cobblestone",
+    "entities/cow": "Cow",
 }

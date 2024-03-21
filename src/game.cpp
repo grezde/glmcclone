@@ -124,7 +124,7 @@ void Game::run() {
         shader::bind(Registry::shaders["voxel"]);
         shader::setMat4("view", view);
         shader::setMat4("proj", proj);
-        gl::bindTexture(Registry::glTextures["blockAtlas"], 0);
+        gl::bindTexture(Registry::glTextures["blockAtlas"].glid, 0);
         shader::setTexture("tex", 0);
 
         testWorld.draw();

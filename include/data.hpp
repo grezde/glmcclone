@@ -85,7 +85,6 @@ struct DataEntry {
     inline glm::vec2 getVEC2() const { return { tuple.first->getf64(), tuple.second->getf64() }; }
     inline glm::vec3 getVEC3() const { return { tuple.first->getf64(), tuple.second->getf64(), tuple.third->getf64() }; }
 
-
     inline bool has(const string& key) const { return dict.find(key) != dict.end(); }
     inline DataEntry* child(const string& key) { return dict[key]; }
     inline DataEntry* schild(const string& key) { return has(key) ? child(key) : nullptr; }

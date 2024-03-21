@@ -89,8 +89,9 @@ u32 gl::linkShaders(u32 vertexShader, u32 fragmentShader) {
 
 u32 gl::textureFromFile(const char *filename, u32 desiredChannels) {
     i32 width, height, channels;
+    stbi_set_flip_vertically_on_load(true);
     u8* data = stbi_load(filename, &width, &height, &channels, desiredChannels); 
-    if(data == nullptr) ERR_EXIT("Could not load image");
+    if(data == nullptr) ERR_EXIT("Could not load image " << filename);
     u32 texture = gl::textureFromMemory(data, width, height, desiredChannels);
     stbi_image_free(data);
     return texture;

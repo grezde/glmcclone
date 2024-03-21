@@ -23,10 +23,16 @@ struct registry {
     }
 };
 
-struct TileTexture {
+struct TextureRI {
     u32 id;
-    u32 atlasID = 0;
-    u32 glid;
+    enum UsageType {
+        UNUSED,
+        ATLAS,
+        GLTEXTURE,
+        GUI
+    };
+    UsageType usage = UNUSED;
+    u32 usageID = 0;
     string name;
 };
 
@@ -53,7 +59,7 @@ namespace Registry {
     extern registry<vector<string>> enums;
     extern registry<u32> shaders;
     extern registry<GLTexture> glTextures;
-    extern registry<TileTexture> textures;
+    extern registry<TextureRI> textures;
 
     extern registry<BlockModelRI> blockModels;
     extern registry<Block*> blocks;
@@ -65,5 +71,6 @@ namespace Registry {
     u32* makeAtlas(); // Creates a texture atlas with all the files within the folder 
     void addToAtlas(u32* atlasData, u32& index, const string& folder);
     GLTexture finishAtlas(u32* atlasData);
+    void makeGLTextures(const string& folder);
     void init();
 };

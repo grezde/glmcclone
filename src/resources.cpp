@@ -7,7 +7,7 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
-registry<TileTexture> Registry::textures;
+registry<TextureRI> Registry::textures;
 registry<Block*> Registry::blocks;
 registry<BlockModelRI> Registry::blockModels;
 registry<GLTexture> Registry::glTextures;
@@ -34,6 +34,7 @@ void Registry::addToAtlas(u32 *atlasData, u32 &index, const string& folder) {
             continue;
         if(index == ATLASTILE*ATLASTILE)
             ERR_EXIT("Atlas too small");
+        stbi_set_flip_vertically_on_load(false);
         string filename = "assets/textures/" + p.first + ".png";
         i32 imageWidth, imageHeight, imageChannels;
         u8* newdata = stbi_load(filename.c_str(), &imageWidth, &imageHeight, &imageChannels, 4);
@@ -48,7 +49,8 @@ void Registry::addToAtlas(u32 *atlasData, u32 &index, const string& folder) {
         for(u32 y=0; y < ATLASTILE; y++) for(u32 x=0; x < ATLASTILE; x++)
             atlasData[((index/ATLASDIM)*ATLASTILE + y)*ATLASTILE*ATLASDIM + (index%ATLASDIM)*ATLASTILE + x] = ((u32*)newdata)[ATLASTILE*y+x];
         stbi_image_free(newdata);
-        textures.items[p.second].atlasID = index;
+        textures.items[p.second].usage = TextureRI::ATLAS;
+        textures.items[p.second].usageID = index;
         index++;
     }
 }
@@ -89,13 +91,42 @@ void addBlockToRegistry(DataEntry* de, const string& name) {
     de->dict["variants"] = variants;
 }
 
+void Registry::makeGLTextures(const string &folder) {
+    for(auto& p : textures.names) {
+        if(p.first.compare(0, folder.size(), folder) != 0)
+            continue;
+        if(p.first.size() < folder.size()+2)
+            continue;
+        stbi_set_flip_vertically_on_load(false);
+        string filename = "assets/textures/" + p.first + ".png";
+        i32 imageWidth, imageHeight, imageChannels;
+        u8* newdata = stbi_load(filename.c_str(), &imageWidth, &imageHeight, &imageChannels, 4);
+        if(newdata == nullptr) return;
+        if(imageChannels != 3 && imageChannels != 4) { 
+            ERR_EXIT("could not do file bohoho " << p.first); 
+            stbi_image_free(newdata); 
+            return; 
+        }
+        u32 glid = gl::textureFromMemory(newdata, imageWidth, imageHeight, 4);
+        stbi_image_free(newdata);
+        glTextures.add(p.first, {
+            .glid = glid,
+            .width = (u32)imageWidth,
+            .height = (u32)imageHeight,
+            .name = p.first
+        });
+        textures.items[p.second].usage = TextureRI::GLTEXTURE;
+        textures.items[p.second].usageID = glTextures.items.size()-1;
+    }
+}
+
 void Registry::init() {
 
     // enums 
     DataEntry* enumsDE = DataEntry::readText(readFileString("assets/misc/enums.td"));
     if(enumsDE->isMap()) {
         // TODO: what is this warning
-        for(const std::pair<string, DataEntry*>& p : enumsDE->dict) {
+        for(const std::pair<string, DataEntry*> p : enumsDE->dict) {
             if(!p.second->isListable())
                 continue;
             vector<string> vs;
@@ -134,24 +165,25 @@ void Registry::init() {
 
     // textures
     vector<FileEntry> textureFES = readFolderRecursively("assets/textures");
-    textures.add("missing", { 0, 0, 0, "missing" });
+    textures.add("missing", { 0, TextureRI::UNUSED, 0, "missing" });
     for(FileEntry fe : textureFES) {
         if(!fe.hasExtension("png"))
             continue;
         fe.removeExtension(3);
-        textures.add(fe.name, { (u32)textures.items.size(), 0, 0, fe.name });
+        textures.add(fe.name, { (u32)textures.items.size(), TextureRI::UNUSED, 0, fe.name });
     }
 
     // block models
     blockModels.add("none", { NoModel::constructor, 0, "none"});
     blockModels.add("cube", { CubeModel::constructor, 0b111111, "cube" });
 
-    // atlas
+    // atlas & textures
     u32* atlasData = makeAtlas();
     u32 atlasIndex = 1;
     addToAtlas(atlasData, atlasIndex, "blocks");
     glTextures.add("atlas", finishAtlas(atlasData));
     glTextures.items[glTextures.names["atlas"]].name = "atlas";
+    makeGLTextures("entities");
 
     // blocks
     vector<FileEntry> blockFES = readFolder("assets/blocks");
@@ -167,6 +199,28 @@ void Registry::init() {
         }
         fe.removeExtension(2);
         addBlockToRegistry(de, fe.name);
+        delete de;
+    }
+
+    // enity models
+    entityModels.add("none", { NoEntityModel::constructor, "none" });
+    entityModels.add("cuboids", { CuboidsEntityModel::constructor, "cuboids" });
+
+    // entities
+    vector<FileEntry> entityFES = readFolder("assets/entities");
+    for(FileEntry fe : entityFES) {
+        if(!fe.hasExtension("td"))
+            continue;
+        string filename = "assets/entities/" + fe.name;
+        DataEntry* de = DataEntry::readText(readFileString(filename.c_str()));
+        if(de->type == DataEntry::ERROR) {
+            cout << filename << ": ";
+            de->prettyPrint(cout);
+            cout << "\n";
+            continue;
+        }
+        fe.removeExtension(2);
+        entities.add(fe.name, EntityType(fe.name, de));
         delete de;
     }
 

@@ -26,6 +26,7 @@ namespace gl {
 namespace shader {
     extern u32 currentShader;
     void bind(u32 shader);
+    // TODO: see how std::map implements a hash template and use the same thing to use either locations or uniform names for binding
     void setTexture(const char* name, u32 slot);
     void setFloat(const char* name, f32 value);
     void setVec3(const char* name, const glm::vec3& value);

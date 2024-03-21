@@ -158,10 +158,10 @@ BlockModel* CubeModel::constructor(DataEntry* de) {
         if(sit == 0) {
             if(!p.second->isStringable() || !Registry::textures.has(p.second->str))
                 continue;
-            TileTexture texture = Registry::textures[p.second->str];
+            TextureRI texture = Registry::textures[p.second->str];
             for(u8 dir = 0; dir < 6; dir++) 
                 if(set & (1 << dir))
-                    model->faces[dir] = texture.atlasID;
+                    model->faces[dir] = texture.usageID;
         }
         else if(sit == 1) {
             if(!p.second->isInteger() || (u8)p.second->geti64() >= DIRECTION_COUNT)
@@ -355,15 +355,21 @@ void World::init() {
     for(u32 x=0; x<5; x++) for(u32 z=0; z<5; z++) for(u32 y=0; y<1; y++) {
         glm::ivec3 p = {x, y, z};
         
-        WorldChunk* wc = new WorldChunk { 
-            .coords = p, 
-            .chunk = Chunk(), 
-            .mesh = VoxelMesh()
-        };
+        WorldChunk* wc = new WorldChunk(p);
         //wc->chunk.makeRandom();
         wc->chunk.makeSin(p);
         wc->mesh.chunkCoords = p;
         chunks[p] = wc;
+        
+        UUID cown = UUID_make();
+        Entity* cow = new Entity();
+        cow->uuid = cown;
+        cow->data = new DataEntry(DataEntry::MAP);
+        cow->pos = glm::vec3(p) * (f32)Chunk::CHUNKSIZE + glm::vec3(18, 25, 18);
+        cow->type = Registry::entities["cow"].id;
+        cow->vel = {0,0,0};
+        Registry::entities["cow"].model->makeMesh(cow);
+        wc->entities[cown] = cow;
     }
 
     for(u32 x=0; x<5; x++) for(u32 z=0; z<5; z++) for(u32 y=0; y<1; y++) {
@@ -383,15 +389,43 @@ void World::init() {
 }
 
 void World::draw() {
+    shader::bind(Registry::shaders["voxel"]);
+    glm::vec3& cameraPos = Game::cameraPos;
+    glm::vec2& cameraAngle = Game::cameraAngle;
+    
+    glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
+        std::cos(cameraAngle.x)*std::cos(cameraAngle.y),
+        std::sin(cameraAngle.y),
+        std::sin(cameraAngle.x)*std::cos(cameraAngle.y)
+    ), glm::vec3(0, 1, 0));
+    glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)window::width/(f32)window::height, 0.01f, 1000.0f);
+    
+    shader::bind(Registry::shaders["voxel"]);
+    shader::setMat4("view", view);
+    shader::setMat4("proj", proj);
+    gl::bindTexture(Registry::glTextures["atlas"].glid, 0);
+    shader::setTexture("tex", 0);
     for(auto& p : chunks) {
         p.second->mesh.updateUniforms();
         p.second->mesh.draw();
+    }
+    shader::bind(Registry::shaders["simple"]);
+    shader::setMat4("view", view);
+    shader::setMat4("proj", proj);
+    gl::bindTexture(Registry::glTextures["entities/cow"].glid, 0);
+    shader::setTexture("tex", 0);
+    
+    for(auto& p : chunks) for(auto& pp : p.second->entities) {
+        pp.second->mesh.updateUniforms();
+        pp.second->mesh.draw();
     }
 }
 
 AABB playerBB = { {-0.4, -1.7, -0.4}, { 0.8, 1.95, 0.5 } };
 
 void World::update(f32 time, f32 dt) {
+    (void) time;
+
     if(Game::inspectMode) {
         Game::cameraVel = {0,0,0};
         return;
@@ -421,12 +455,150 @@ void World::destroy() {
 
 }
 
+CuboidsEntityModel::Cuboid::Cuboid(DataEntry* de) {
+    if(!de || !de->isMap()) return;
+    for(u8 dir=0; dir<DIRECTION_COUNT; dir++) {
+        DataEntry* dirde = de->schild(directionNames[dir]);
+        if(!dirde || !dirde->isIVEC2()) continue;
+        this->uv_starts[dir] = dirde->getIVEC2();
+    }
+    DataEntry* dimsde = de->schild("dims");
+    if(!dimsde || !dimsde->isIVEC3()) return;
+    this->dimensions = dimsde->getIVEC3();
+}
+
+CuboidsEntityModel::Object::Object(const map<string, u32>& cuboidMap, const string& name, DataEntry* de) {
+    this->name = name;
+    if(!de || !de->isMap()) return;
+    DataEntry* pivotde = de->schild("pivot");
+    if(pivotde && pivotde->isIVEC3()) this->pivot = pivotde->getIVEC3();
+    DataEntry* cuboidsDe = de->schild("cuboids");
+    if(!cuboidsDe || !cuboidsDe->isListable()) return;
+    for(DataEntry* apcubde : cuboidsDe->list) {
+        if(!apcubde->isMap()) continue;
+        DataEntry* idde = apcubde->schild("id");
+        DataEntry* posde = apcubde->schild("pos");
+        if(!idde || !idde->isStringable() || !posde || !posde->isIVEC3()) continue;
+        if(cuboidMap.find(idde->str) == cuboidMap.end()) continue;
+        this->cuboids.push_back({
+            .id = cuboidMap.at(idde->str),
+            .pos = posde->getIVEC3()
+        });
+    }
+}
+
+void EntityModel::setTexture(DataEntry* de) {
+    DataEntry* texture = de->schild("texture");
+    if(!texture || !texture->isStringable() || !Registry::textures.has(texture->str))
+        return;
+    TextureRI& tri = Registry::textures[texture->str];
+    if(tri.usage != TextureRI::GLTEXTURE)
+        return;
+    this->texture = tri.usageID;
+}
+
+struct CuboidsIntermediary {
+    glm::ivec3 xyz;
+    glm::ivec2 uv;
+};
+
+CuboidsIntermediary cuboidsVertices[DIRECTION_COUNT*4] = {
+    { { 1, 0, 1 }, { 0, 0 } },
+    { { 1, 0, 0 }, { 1, 0 } },
+    { { 1, 1, 0 }, { 1, 1 } },
+    { { 1, 1, 1 }, { 0, 1 } },
+    
+    { { 0, 0, 1 }, { 0, 0 } },
+    { { 1, 0, 1 }, { 1, 0 } },
+    { { 1, 1, 1 }, { 1, 1 } },
+    { { 0, 1, 1 }, { 0, 1 } },
+
+    { { 0, 0, 0 }, { 0, 0 } },
+    { { 0, 0, 1 }, { 1, 0 } },
+    { { 0, 1, 1 }, { 1, 1 } },
+    { { 0, 1, 0 }, { 0, 1 } },
+
+    { { 1, 0, 0 }, { 1, 0 } },
+    { { 0, 0, 0 }, { 0, 0 } },
+    { { 0, 1, 0 }, { 0, 1 } },
+    { { 1, 1, 0 }, { 1, 1 } },
+
+    { { 0, 1, 0 }, { 0, 0 } },
+    { { 0, 1, 1 }, { 0, 1 } },
+    { { 1, 1, 1 }, { 1, 1 } },
+    { { 1, 1, 0 }, { 1, 0 } },
+
+    { { 0, 0, 1 }, { 0, 1 } },
+    { { 0, 0, 0 }, { 0, 0 } },
+    { { 1, 0, 0 }, { 1, 0 } },
+    { { 1, 0, 1 }, { 1, 1 } },
+  
+};
 
 CuboidsEntityModel::CuboidsEntityModel(DataEntry* de) {
     if(!de || !de->isMap() || !de->has("cuboids") || !de->has("objects"))
         return;
-    DataEntry* cuboids = de->schild("cuboids");
-    
+    setTexture(de);
+    DataEntry* cuboidsDE = de->schild("cuboids");
+    DataEntry* objectsDE = de->schild("objects");
+    map<string, u32> cuboidMap;
+    if(!cuboidsDE->isMap() || !objectsDE->isMap()) return;
+    for(const pair<string, DataEntry*> kc : cuboidsDE->dict) {
+        cuboidMap[kc.first] = cuboids.size();
+        cuboids.push_back(Cuboid(kc.second));
+    }
+    for(const pair<string, DataEntry*> kc : objectsDE->dict)
+        objects.push_back(Object(cuboidMap, kc.first, kc.second));
+}
+
+void CuboidsEntityModel::makeMesh(Entity* entity) {
+    SimpleMesh& mesh = entity->mesh;
+    GLTexture& gltexture = Registry::glTextures.items[texture];
+    mesh.indices.clear();
+    mesh.vertices.clear();
+
+    for(Object& object : objects) {
+        for(AppliedCuboid& apc : object.cuboids) {
+            for(u32 dir = 0; dir<DIRECTION_COUNT; dir++) {
+                CuboidsIntermediary cbi[4];
+                for(u32 i=0; i<4; i++) {
+                    cbi[i] = cuboidsVertices[dir*4+i];
+                    cbi[i].xyz = cbi[i].xyz * cuboids[apc.id].dimensions + apc.pos;
+                    glm::vec2 uv = glm::vec2(cbi[i].uv);
+                    switch(dir) {
+                        case EAST: case WEST:
+                            uv *= glm::vec2(cuboids[apc.id].dimensions.x, cuboids[apc.id].dimensions.y);
+                            break;
+                        case NORTH: case SOUTH:
+                            uv *= glm::vec2(cuboids[apc.id].dimensions.z, cuboids[apc.id].dimensions.y);
+                            break;
+                        case UP: case DOWN:
+                            uv *= glm::vec2(cuboids[apc.id].dimensions.z, cuboids[apc.id].dimensions.x);
+                            break;
+                    }
+                    uv += glm::vec2(cuboids[apc.id].uv_starts[dir]);
+                    uv /= glm::vec2(gltexture.width, gltexture.height);
+                    // we have dims
+                    // and wee need to extract 2 coords from it
+
+                    mesh.vertices.push_back((SimpleVertex) { 
+                        .position = glm::vec3(cbi[i].xyz) / (f32)Registry::ATLASTILE,
+                        .color = glm::vec4(1.0, 1.0, 1.0, 1.0),
+                        .texCoords = uv
+                    });
+                }
+                mesh.indices.push_back(mesh.vertices.size()-4 + 0);
+                mesh.indices.push_back(mesh.vertices.size()-4 + 1);
+                mesh.indices.push_back(mesh.vertices.size()-4 + 3);
+                mesh.indices.push_back(mesh.vertices.size()-4 + 3);
+                mesh.indices.push_back(mesh.vertices.size()-4 + 1);
+                mesh.indices.push_back(mesh.vertices.size()-4 + 2);
+            }
+        }
+    }
+    mesh.position = entity->pos;
+    mesh.scaling = glm::vec3(1, 1, 1);
+    mesh.makeObjects();
 }
 
 EntityModel* CuboidsEntityModel::constructor(DataEntry *de) {
@@ -448,5 +620,6 @@ EntityType::EntityType(string entityName, DataEntry* de) : name(entityName) {
     DataEntry* dims = aabb->schild("dims");
     if(!start->isVEC3() || !dims->isVEC3()) return;
     this->aabb = { start->getVEC3(), dims->getVEC3() };
+
 
 }
