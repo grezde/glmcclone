@@ -7,6 +7,8 @@ CC=gcc
 GLSLC=glslc
 DEBUGGER=gf2
 RUNNER=
+EXE=mcclone
+OUTDIR=output
 
 folders=$(patsubst src%,output%,$(shell find src -type d))
 cppobjects=$(patsubst src/%.cpp,output/%.o,$(shell find src -name "*.cpp"))
@@ -22,52 +24,52 @@ else
 endif
 
 # main does not have header file
-output/main.o: src/main.cpp
+$(OUTDIR)/main.o: src/main.cpp
 	echo "CPPC  " $<
 	$(CPPC) -c $< $(COMPFLAGS) -o $@
 
 # ignoring the warnings specifically for base.cpp because it implements external header only libraries
-output/base.o: src/base.cpp include/base.hpp
+$(OUTDIR)/base.o: src/base.cpp include/base.hpp
 	echo "CPPC  " $<
 	$(CPPC) -c $< $(COMPFLAGS) -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-variable -o $@
 
-output/glad.o: external/glad/src/glad.c
+$(OUTDIR)/glad.o: external/glad/src/glad.c
 	$(CC) -c -Iexternal/glad/include $< -o $@
 
-output/datatool.o: src2/datatool.cpp
+$(OUTDIR)/datatool.o: src2/datatool.cpp
 	echo "CPPC  " $<
 	$(CPPC) -c $< $(COMPFLAGS) -o $@
 
-output/%.o: src/%.cpp include/%.hpp
+$(OUTDIR)/%.o: src/%.cpp include/%.hpp
 	echo "CPPC  " $<
 	$(CPPC) -c $< $(COMPFLAGS) -o $@
 
-output/%: output
+$(OUTDIR)/%: $(OUTDIR)
 	echo "MKDIR " $@
 	mkdir -p $@
 
-output:
+$(OUTDIR):
 	echo "MKDIR " $@
 	mkdir -p $@
 
 
-output/mcclone: $(folders) $(cppobjects)
-	echo "LINK   mcclone"
+$(OUTDIR)/$(EXE): $(folders) $(cppobjects)
+	echo "LINK   $(EXE)"
 	$(CPPC) $(LINKFLAGS) $(cppobjects) -o $@
 
-output/datatool: output/datatool.o output/data.o output/base.o
+$(OUTDIR)/datatool: $(OUTDIR)/datatool.o $(OUTDIR)/data.o $(OUTDIR)/base.o
 	echo "LINK   datatool" 
 	$(CPPC) $(LINKFLAGS) $^ -o $@
 
-run: output/mcclone
-	echo "RUN    mcclone"
-	$(RUNNER) output/mcclone
+run: $(OUTDIR)/$(EXE)
+	echo "RUN    $(EXE)"
+	$(RUNNER) $(OUTDIR)/$(EXE)
 
-debug: output/mcclone
+debug: $(OUTDIR)/$(EXE)
 	echo "DEBUG  " $<
-	$(DEBUGGER) output/mcclone
+	$(DEBUGGER) $(OUTDIR)/$(EXE)
 
-all: output/mcclone output/datatool
+all: $(OUTDIR)/$(EXE) $(OUTDIR)/datatool
 
 
 .SILENT:
@@ -78,8 +80,8 @@ todos:
 # ignoring base.cpp, shaders
 clean_o:
 	echo 'RM     object files'
-	rm `find output -name "*.o" | grep -v base.o` || true
+	rm `find $(OUTDIR) -name "*.o" | grep -v base.o` || true
 
 clean_all:
-	echo 'RM     output/*'
-	rm -rf output/*
+	echo 'RM     $(OUTDIR)/*'
+	rm -rf $(OUTDIR)/*

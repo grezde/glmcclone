@@ -543,13 +543,13 @@ CuboidsEntityModel::VertexIntermediary cuboidsVertices[DIRECTION_COUNT*4] = {
     { { 1, 1, 0 }, { 1, 1 } },
 
     { { 0, 1, 0 }, { 0, 0 } },
-    { { 0, 1, 1 }, { 0, 1 } },
+    { { 0, 1, 1 }, { 1, 0 } },
     { { 1, 1, 1 }, { 1, 1 } },
-    { { 1, 1, 0 }, { 1, 0 } },
+    { { 1, 1, 0 }, { 0, 1 } },
 
-    { { 0, 0, 1 }, { 0, 1 } },
+    { { 0, 0, 1 }, { 1, 0 } },
     { { 0, 0, 0 }, { 0, 0 } },
-    { { 1, 0, 0 }, { 1, 0 } },
+    { { 1, 0, 0 }, { 0, 1 } },
     { { 1, 0, 1 }, { 1, 1 } },
   
 };
@@ -564,7 +564,7 @@ void CuboidsEntityModel::Cuboid::makeIntermediary(CuboidsEntityModel::VertexInte
         { dimensions.z, -dimensions.y },
         { dimensions.x, -dimensions.y },
         { dimensions.z, -dimensions.y },
-        { -dimensions.x, dimensions.z },
+        { -dimensions.x, -dimensions.z },
         { -dimensions.x, dimensions.z },
     };
     glm::ivec2 offsets[DIRECTION_COUNT] = { 
@@ -572,7 +572,7 @@ void CuboidsEntityModel::Cuboid::makeIntermediary(CuboidsEntityModel::VertexInte
         { -dimensions.z, dimensions.y },
         { dimensions.x+dimensions.z, dimensions.y },
         { dimensions.x, dimensions.y },
-        { dimensions.x, -dimensions.z },
+        { dimensions.x, 0 },
         { 2*dimensions.x, -dimensions.z }
     };
     for(u32 i=0; i<24; i++)
@@ -584,7 +584,7 @@ void CuboidsEntityModel::AppliedCuboid::makeIntermediary(CuboidsEntityModel::Ver
     glm::ivec2 facingAS = directionToAxisAndSign[facing];
     glm::ivec2 downwardsAS = directionToAxisAndSign[downwards];
     if(downwardsAS.x == facingAS.x) return;
-    glm::ivec2 other = { 0, flip ? -1 : 1 };
+    glm::ivec2 other = { 0, 1 };
     if(downwardsAS.x == 0 || facingAS.x == 0)
         other.x = 1;
     if(downwardsAS.x == 1 || facingAS.x == 1)
@@ -594,10 +594,19 @@ void CuboidsEntityModel::AppliedCuboid::makeIntermediary(CuboidsEntityModel::Ver
     rotation_mat[facingAS.x][0] = facingAS.y;
     rotation_mat[downwardsAS.x][1] = -downwardsAS.y;
     rotation_mat[other.x][2] = other.y;
-    if(glm::determinant(rotation_mat) < 0)
+    bool isPositive = glm::determinant(rotation_mat) > 0;
+    if(isPositive == flip)
         rotation_mat[other.x][2] = -other.y;
     for(u32 i=0; i<24; i++)
         vi[i].xyz = pos + rotation_mat * vi[i].xyz;
+    if(flip) for(u32 dir=0; dir<6; dir++) {
+        VertexIntermediary temp = vi[dir*4+0];
+        vi[dir*4+0] = vi[dir*4+3];
+        vi[dir*4+3] = temp;
+        temp = vi[dir*4+1];
+        vi[dir*4+1] = vi[dir*4+2];
+        vi[dir*4+2] = temp;
+    }
 }
 
 CuboidsEntityModel::CuboidsEntityModel(DataEntry* de) {

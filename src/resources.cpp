@@ -123,7 +123,7 @@ void Registry::makeGLTextures(const string &folder) {
 void Registry::init() {
 
     // enums 
-    DataEntry* enumsDE = DataEntry::readText(readFileString("assets/misc/enums.td"));
+    DataEntry* enumsDE = DataEntry::readText(readFileString("assets/dev/enums.td"));
     if(enumsDE->isMap()) {
         // TODO: what is this warning
         for(const std::pair<string, DataEntry*> p : enumsDE->dict) {
@@ -220,6 +220,7 @@ void Registry::init() {
             continue;
         }
         fe.removeExtension(2);
+        cout << fe.name << "\n";
         entities.add(fe.name, EntityType(fe.name, de));
         delete de;
     }

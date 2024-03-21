@@ -33,12 +33,12 @@
             cuboids: [ 
                 { id: "head", pos: (12, 20, 0) }, 
                 { id: "horn", pos: (11, 24, -5.5) }, 
-                { id: "horn", pos: (11, 24, 4.5) } 
+                { id: "horn", pos: (11, 24, 4.5), flip: true }
             ]
         },
         leg0: {
             pivot: (-6, 12, -4),
-            cuboids: [ { id: "leg", pos: (-6, 6, -4) } ]
+            cuboids: [ { id: "leg", pos: (-6, 6, -4), flip: true } ]
         },
         leg1: {
             pivot: (-6, 12, 4),
@@ -46,7 +46,7 @@
         },
         leg2: {
             pivot: (6, 12, -4),
-            cuboids: [ { id: "leg", pos: (6, 6, -4) } ]
+            cuboids: [ { id: "leg", pos: (6, 6, -4), flip: true } ]
         },
         leg3: {
             pivot: (6, 12, 4),
