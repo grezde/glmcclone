@@ -7,12 +7,14 @@
 #include <stb_image.h>
 #include <stb_image_write.h>
 
-registry<Texture> Registry::textures;
+registry<TileTexture> Registry::textures;
 registry<Block*> Registry::blocks;
-registry<BlockModelRegistryItem> Registry::blockModels;
-registry<u32> Registry::glTextures;
+registry<BlockModelRI> Registry::blockModels;
+registry<GLTexture> Registry::glTextures;
 registry<u32> Registry::shaders;
 registry<vector<string>> Registry::enums;
+registry<EntityModelRI> Registry::entityModels;
+registry<EntityType> Registry::entities;
 
 u32* Registry::makeAtlas() {
     u32* data = (u32*)malloc(4*ATLASTILE*ATLASTILE*ATLASDIM*ATLASDIM);
@@ -51,7 +53,7 @@ void Registry::addToAtlas(u32 *atlasData, u32 &index, const string& folder) {
     }
 }
 
-u32 Registry::finishAtlas(u32* atlasData) {
+GLTexture Registry::finishAtlas(u32* atlasData) {
     #ifdef DEBUG
         stbi_write_png("output/atlas_new.png", ATLASTILE*ATLASDIM, ATLASTILE*ATLASDIM, 4, atlasData, ATLASTILE*ATLASDIM*4);
     #endif
@@ -61,9 +63,11 @@ u32 Registry::finishAtlas(u32* atlasData) {
         atlasData[y*ATLASTILE*ATLASDIM+x] = atlasData[(ATLASDIM*ATLASTILE-y-1)*ATLASTILE*ATLASDIM+x];
         atlasData[(ATLASDIM*ATLASTILE-y-1)*ATLASTILE*ATLASDIM+x] = temp;
     };
-    u32 t = gl::textureFromMemory((u8*)atlasData, ATLASDIM*ATLASTILE, ATLASDIM*ATLASTILE, 4);
+    GLTexture tex;
+    tex.height = tex.width = ATLASTILE*ATLASDIM;
+    tex.glid = gl::textureFromMemory((u8*)atlasData, ATLASDIM*ATLASTILE, ATLASDIM*ATLASTILE, 4);
     free(atlasData);
-    return t;
+    return tex;
 }
 
 void addBlockToRegistry(DataEntry* de, const string& name) {
@@ -130,23 +134,24 @@ void Registry::init() {
 
     // textures
     vector<FileEntry> textureFES = readFolderRecursively("assets/textures");
-    textures.add("missing", { 0, 0, "missing" });
+    textures.add("missing", { 0, 0, 0, "missing" });
     for(FileEntry fe : textureFES) {
         if(!fe.hasExtension("png"))
             continue;
         fe.removeExtension(3);
-        textures.add(fe.name, { (u32)textures.items.size(), 0, fe.name });
+        textures.add(fe.name, { (u32)textures.items.size(), 0, 0, fe.name });
     }
 
     // block models
-    blockModels.add("none", { noModelConstructor, 0, "none"});
-    blockModels.add("cube", { cubeModelConstructor, 0b111111, "cube" });
+    blockModels.add("none", { NoModel::constructor, 0, "none"});
+    blockModels.add("cube", { CubeModel::constructor, 0b111111, "cube" });
 
     // atlas
     u32* atlasData = makeAtlas();
     u32 atlasIndex = 1;
     addToAtlas(atlasData, atlasIndex, "blocks");
     glTextures.add("atlas", finishAtlas(atlasData));
+    glTextures.items[glTextures.names["atlas"]].name = "atlas";
 
     // blocks
     vector<FileEntry> blockFES = readFolder("assets/blocks");
@@ -164,11 +169,5 @@ void Registry::init() {
         addBlockToRegistry(de, fe.name);
         delete de;
     }
-
-    //cout << "REGISTRY:\n";
-    //shaders.print(cout, "shaders");
-    //blocks.print(cout, "blocks");
-    //for(auto block : blocks.items)
-    //    cout << block->name << ": " << (u16)block->solidity << "\n";
 
 }

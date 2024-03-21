@@ -95,12 +95,10 @@ void readFolderR(string& foldername, string& basename, vector<FileEntry>& out) {
             basename += "/";
             readFolderR(foldername, basename, out);
             foldername.resize(sizes[0]);
-            basename.resize(sizes[0]);
+            basename.resize(sizes[1]);
         }
-        else {
+        else
             out.push_back({ false, basename + entry->d_name });
-
-        }
         entry = readdir(dir);
     }
     closedir(dir);

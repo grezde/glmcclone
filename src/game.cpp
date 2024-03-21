@@ -15,8 +15,8 @@
 bool Game::printFPS = false;
 bool Game::inspectMode = true;
 World Game::testWorld;
-glm::vec3 Game::cameraPos = { -1.0f, 0, 3.0f };
-glm::vec2 Game::cameraAngle = { -3.141f/2.0f, 0 };
+glm::vec3 Game::cameraPos = { 3.0f, 20.0f, 3.0f };
+glm::vec2 Game::cameraAngle = { +3.141f/4.0f, 0 };
 glm::vec3 Game::cameraVel = { 0, 0, 0 };
 
 void Game::processInput(f32 dt) {

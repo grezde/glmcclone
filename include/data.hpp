@@ -1,5 +1,9 @@
 #pragma once
 #include "base.hpp"
+#include <glm/ext/vector_int2.hpp>
+#include <glm/ext/vector_int3.hpp>
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
 
 struct DataEntry {
     enum CompressionType: u8 {
@@ -69,6 +73,18 @@ struct DataEntry {
     inline bool isListable() const { return type == LIST || type == VECTOR; }
     inline bool isStringable() const { return type == STRING || type == STR_SLICE; }
     inline bool isInteger() const { return INT8 <= type && type <= UINT64; }
+    inline bool isFloating() const { return INT8 <= type && type <= FLOAT64; }
+    
+    inline bool isIVEC2() const { return type == PAIR && tuple.first->isInteger() && tuple.second->isInteger(); }
+    inline bool isIVEC3() const { return type == TUPLE3 && tuple.first->isInteger() && tuple.second->isInteger() && tuple.third->isInteger(); }
+    inline glm::ivec2 getIVEC2() const { return { (i32)tuple.first->geti64(), (i32)tuple.second->geti64() }; }
+    inline glm::ivec3 getIVEC3() const { return { (i32)tuple.first->geti64(), (i32)tuple.second->geti64(), (i32)tuple.third->geti64() }; }
+
+    inline bool isVEC2() const { return type == PAIR && tuple.first->isFloating() && tuple.second->isFloating(); }
+    inline bool isVEC3() const { return type == TUPLE3 && tuple.first->isFloating() && tuple.second->isFloating() && tuple.third->isFloating(); }
+    inline glm::vec2 getVEC2() const { return { tuple.first->getf64(), tuple.second->getf64() }; }
+    inline glm::vec3 getVEC3() const { return { tuple.first->getf64(), tuple.second->getf64(), tuple.third->getf64() }; }
+
 
     inline bool has(const string& key) const { return dict.find(key) != dict.end(); }
     inline DataEntry* child(const string& key) { return dict[key]; }

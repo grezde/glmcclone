@@ -37,9 +37,9 @@ struct BlockModel {
 };
 
 struct NoModel : BlockModel {
+    static BlockModel* constructor(DataEntry* de);
     virtual void addToMesh(DrawInfo drawinfo) { (void)drawinfo; };
 };
-BlockModel* noModelConstructor(DataEntry* de);
 
 struct CubeModel : BlockModel {
     u32 faces[6] = {};
@@ -50,9 +50,9 @@ struct CubeModel : BlockModel {
     // the 3rd bit: whether after 0,0 there is 0,1 or 1,0
     static u8 getPermutation(Direction facedir, Direction texdir, bool flip);
     
+    static BlockModel* constructor(DataEntry* de);
     virtual void addToMesh(DrawInfo drawinfo);
 };
-BlockModel* cubeModelConstructor(DataEntry* de);
 
 struct Block {
     u8 solidity;
@@ -70,7 +70,9 @@ struct Chunk {
     static constexpr u32 CHUNKSIZE = 32;
     typedef u8 blockID; 
     blockID blocks[CHUNKSIZE*CHUNKSIZE*CHUNKSIZE];
-    
+    u16 lightlevels[CHUNKSIZE*CHUNKSIZE*CHUNKSIZE];
+
+    void makeSin(glm::ivec3 coords);
     void makeRandom();
 
     static u32 indexOf(glm::ivec3 inChunkCoords);
@@ -79,9 +81,58 @@ struct Chunk {
     void makeVoxelMesh(VoxelMesh& mesh, Chunk* neighbours[6]) const;
 };
 
+typedef glm::ivec4 UUID;
+
+struct Entity {
+    u32 type;
+    UUID uuid;
+    glm::vec3 pos, vel;
+    glm::vec3 lookingAt;
+    DataEntry* data;
+    SimpleMesh mesh;
+};
+
+struct EntityModel {
+    virtual void makeMesh(Entity* entity) = 0;
+};
+
+struct CuboidsEntityModel : EntityModel {
+    struct Cuboid {
+        glm::ivec2 uv_starts[DIRECTION_COUNT];
+        // TODO: add flips and orientations to the sides to this
+        glm::ivec3 dimensions;
+    };
+    struct AppliedCuboid {
+        u32 id;
+        glm::ivec3 pos;
+    }; 
+    struct Object {
+        string name;
+        glm::ivec3 pivot;
+        vector<AppliedCuboid> cuboids;
+    };
+    vector<Cuboid> cuboids;
+    vector<Object> object;
+
+    CuboidsEntityModel(DataEntry* de);
+    static EntityModel* constructor(DataEntry* de);
+    virtual void makeMesh(Entity* entity);
+};
+
+struct EntityType {
+    u32 id;
+    string name;
+    EntityModel* model;
+    u32 movement;
+    AABB aabb;
+    EntityType(string entityName, DataEntry* de);
+};
+
 struct WorldChunk {
     glm::ivec3 coords;
     Chunk chunk;
+    std::unordered_map<UUID, Entity*> entities;
+    bool needsRemeshing;
     VoxelMesh mesh;
 };
 

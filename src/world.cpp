@@ -1,4 +1,5 @@
 #include "world.hpp"
+#include "data.hpp"
 #include "game.hpp"
 #include "renderer.hpp"
 #include "resources.hpp"
@@ -37,7 +38,7 @@ Block::Block(string blockName, DataEntry* de) : name(blockName) {
     // TODO: add error message to block creation
 }
 
-BlockModel* noModelConstructor(DataEntry* de) {
+BlockModel* NoModel::constructor(DataEntry* de) {
     (void) de;
     return new NoModel();
 }
@@ -119,7 +120,7 @@ u8 CubeModel::getPermutation(Direction facedir, Direction texdir, bool flip) {
     return result;
 }
 
-BlockModel* cubeModelConstructor(DataEntry* de) {
+BlockModel* CubeModel::constructor(DataEntry* de) {
     CubeModel* model = new CubeModel();
     DataEntry* texturesBlock = de->schild("textures");
     if(!texturesBlock || !texturesBlock->isMap()) 
@@ -157,7 +158,7 @@ BlockModel* cubeModelConstructor(DataEntry* de) {
         if(sit == 0) {
             if(!p.second->isStringable() || !Registry::textures.has(p.second->str))
                 continue;
-            Texture texture = Registry::textures[p.second->str];
+            TileTexture texture = Registry::textures[p.second->str];
             for(u8 dir = 0; dir < 6; dir++) 
                 if(set & (1 << dir))
                     model->faces[dir] = texture.atlasID;
@@ -283,6 +284,33 @@ u32 Chunk::indexOf(glm::ivec3 inChunkCoords) {
     return inChunkCoords.x + inChunkCoords.z*CHUNKSIZE + inChunkCoords.y*CHUNKSIZE*CHUNKSIZE;
 }
 
+void Chunk::makeSin(glm::ivec3 coords) {
+    for(u32 x=0; x<CHUNKSIZE; x++) for(u32 z=0; z<CHUNKSIZE; z++) {
+        u32 height = 15 + 10*std::sin(0.1*(f32)(coords.x*CHUNKSIZE+x))*std::sin(0.1*(f32)(coords.z*CHUNKSIZE+z));
+        for(u32 y=0; y<CHUNKSIZE; y++) {
+            u32 i = indexOf({x, y, z});
+            f32 r = (f32)rand()/(f32)RAND_MAX;
+            if(y < height-4) {
+                if(r < 0.1) blocks[i] = Registry::blocks.names["cobblestone"];
+                else blocks[i] = Registry::blocks.names["stone"];
+            } else if(y < height)
+                blocks[i] = Registry::blocks.names["dirt"];
+            else if(y == height) {
+                if(r < 0.05) blocks[i] = Registry::blocks.names["dirt"];
+                else blocks[i] = Registry::blocks.names["grass"];
+            }
+            else 
+                blocks[i] = 0;
+            if(x == CHUNKSIZE/2 && z == CHUNKSIZE/2) {
+                if(y > height && y < height+10)
+                    blocks[i] = Registry::blocks.names["log/y"];
+            }
+        }
+        
+    }
+
+}
+
 void Chunk::makeRandom() {
     for(u32 x=0; x<CHUNKSIZE; x++)
     for(u32 z=0; z<CHUNKSIZE; z++)
@@ -330,9 +358,10 @@ void World::init() {
         WorldChunk* wc = new WorldChunk { 
             .coords = p, 
             .chunk = Chunk(), 
-            .mesh = VoxelMesh() 
+            .mesh = VoxelMesh()
         };
-        wc->chunk.makeRandom();
+        //wc->chunk.makeRandom();
+        wc->chunk.makeSin(p);
         wc->mesh.chunkCoords = p;
         chunks[p] = wc;
     }
@@ -389,5 +418,35 @@ void World::update(f32 time, f32 dt) {
 }
 
 void World::destroy() {
+
+}
+
+
+CuboidsEntityModel::CuboidsEntityModel(DataEntry* de) {
+    if(!de || !de->isMap() || !de->has("cuboids") || !de->has("objects"))
+        return;
+    DataEntry* cuboids = de->schild("cuboids");
+    
+}
+
+EntityModel* CuboidsEntityModel::constructor(DataEntry *de) {
+    return new CuboidsEntityModel(de); 
+}
+
+EntityType::EntityType(string entityName, DataEntry* de) : name(entityName) {
+    this->aabb = {{0,0,0},{0,0,0}};
+    this->model = nullptr;
+    if(!de || !de->isMap()) return;
+
+    DataEntry* model = de->schild("model");
+    if(!model || !model->isStringable() || !Registry::entityModels.has(model->str)) return;
+    this->model = Registry::entityModels[model->str].constructor(de);
+    
+    DataEntry* aabb = de->schild("aabb");
+    if(!aabb || !aabb->isMap() || !aabb->has("start") || !aabb->has("dims")) return;
+    DataEntry* start = aabb->schild("start"); 
+    DataEntry* dims = aabb->schild("dims");
+    if(!start->isVEC3() || !dims->isVEC3()) return;
+    this->aabb = { start->getVEC3(), dims->getVEC3() };
 
 }
