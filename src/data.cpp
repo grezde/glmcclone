@@ -445,6 +445,8 @@ void DataEntry::seti64(i64 value) {
 }
 
 f64 DataEntry::getf64() const {
+    if(isInteger())
+        return geti64();
     switch(type) {
         case FLOAT32: return integers.float32;
         case FLOAT64: return integers.float64;

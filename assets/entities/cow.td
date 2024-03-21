@@ -1,41 +1,56 @@
 {
     model: "cuboids",
-    texture: "entities/cow",
+    texture: "entities/rainbow_cow",
     movement: "quadruped",
     aabb: { start: (-1.0, -1.0, -1.0), dims: (2.0, 2.0, 2.0) },
     cuboids: {
-        body: { up: (28, 14), down: (50, 14), south: (18, 14), north: (40, 14), east: (28,  4), west: (40,  4), dims: (18, 12, 10) },
-        leg:  { up: ( 4, 16), down: ( 8, 16), south: ( 0, 20), north: ( 8, 20), east: ( 4, 20), west: (12, 20), dims: ( 4, 12,  4) },
-        head: { up: ( 6,  0), down: (14,  0), south: ( 0,  6), north: (14,  6), east: ( 6,  6), west: (20,  6), dims: ( 6,  8,  8) },
-        horn: { up: (23,  0), down: (24,  0), south: (22,  1), north: (24,  1), east: ( 6,  1), west: (25,  1), dims: ( 1,  1,  1) }
+        body: {
+            // uv represents the top-right corner of the face where the unwrapping begins
+            uv: (28, 14),
+            // dims represent: width of unwrapping face, height of unwrapping face, the other dimension
+            // by default, the unwrapping face is towards the east, in the up direction
+            dims: (12, 18, 10)
+        },
+        leg: {
+            uv: (4, 20),
+            dims: (4, 12, 4) 
+        },
+        head: {
+            uv: (6, 6),
+            dims: (8, 8, 6) 
+        },
+        horn: {
+            uv: (23, 1),
+            dims: (1, 3, 1)
+        }
     },
     objects: {
         body: {
-            cuboids: [ { id: "body", pos: (-9, 12, -5) }]
+            cuboids: [ { id: "body", pos: (0, 17, 0), facing: up, downwards: east }]
         },
         head: {
             pivot: (11, 20, 0),
             cuboids: [ 
-                { id: "head", pos: (9, 16, -4) }, 
-                { id: "horn", pos: (11, 22, -5) }, 
-                { id: "horn", pos: (11, 22, 4), flip_x: true } 
+                { id: "head", pos: (12, 20, 0) }, 
+                { id: "horn", pos: (11, 24, -5.5) }, 
+                { id: "horn", pos: (11, 24, 4.5) } 
             ]
         },
         leg0: {
             pivot: (-6, 12, -4),
-            cuboids: [ { id: "leg", pos: (-8, 0, -6) } ]
+            cuboids: [ { id: "leg", pos: (-6, 6, -4) } ]
         },
         leg1: {
             pivot: (-6, 12, 4),
-            cuboids: [ { id: "leg", pos: (-8, 0, 2) } ]
+            cuboids: [ { id: "leg", pos: (-6, 6, 4) } ]
         },
         leg2: {
             pivot: (6, 12, -4),
-            cuboids: [ { id: "leg", pos: (4, 0, -6) } ]
+            cuboids: [ { id: "leg", pos: (6, 6, -4) } ]
         },
         leg3: {
             pivot: (6, 12, 4),
-            cuboids: [ { id: "leg", pos: (4, 0, 2) } ]
+            cuboids: [ { id: "leg", pos: (6, 6, 4) } ]
         }
     }
 }

@@ -21,6 +21,7 @@ enum Direction: u32 {
 extern const Direction directionOpposite[DIRECTION_COUNT];
 extern glm::ivec3 directionVector[DIRECTION_COUNT];
 extern const char* directionNames[DIRECTION_COUNT];
+extern glm::ivec2 directionToAxisAndSign[DIRECTION_COUNT];
 
 struct AABB {
     glm::vec3 start;
@@ -106,22 +107,37 @@ struct NoEntityModel : EntityModel {
 };
 
 struct CuboidsEntityModel : EntityModel {
+    
+    struct VertexIntermediary {
+        glm::vec3 xyz;
+        glm::ivec2 uv;
+    };
+
     struct Cuboid {
-        glm::ivec2 uv_starts[DIRECTION_COUNT];
-        // TODO: add flips and orientations to the sides to this
+        glm::ivec2 uv;
         glm::ivec3 dimensions;
+
+        void makeIntermediary(VertexIntermediary* vi);
         Cuboid(DataEntry* de);
     };
+
     struct AppliedCuboid {
         u32 id;
-        glm::ivec3 pos;
+        glm::vec3 pos;
+        Direction facing, downwards;
+        bool flip;
+
+        AppliedCuboid(const map<string, u32>& cuboidMap, DataEntry* de);
+        void makeIntermediary(VertexIntermediary* vi);
     }; 
+
     struct Object {
         string name;
-        glm::ivec3 pivot;
+        glm::vec3 pivot;
         vector<AppliedCuboid> cuboids;
         Object(const map<string, u32>& cuboidMap, const string& name, DataEntry* de);
     };
+
     vector<Cuboid> cuboids;
     vector<Object> objects;
 

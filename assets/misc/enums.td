@@ -1,6 +1,7 @@
 {
     axis: ["x", "y", "z"],
     direction: ["east", "south", "west", "north", "up", "down"],
+    direction2: ["px", "pz", "nx", "nz", "py", "ny"],
     vertical_direction: ["east", "south", "west", "north"],
     boolean: ["false", "true"],
     pallete: ["stone", "planks", "dirt"],

@@ -5,6 +5,7 @@
 #include "resources.hpp"
 #include <cstring>
 #include <glm/ext/vector_int3.hpp>
+#include <glm/matrix.hpp>
 
 const Direction directionOpposite[DIRECTION_COUNT] = {
     WEST, NORTH, EAST, SOUTH,
@@ -22,6 +23,15 @@ glm::ivec3 directionVector[DIRECTION_COUNT] = {
 
 const char* directionNames[DIRECTION_COUNT] = {
     "east", "south", "west", "north", "up", "down"
+};
+
+glm::ivec2 directionToAxisAndSign[DIRECTION_COUNT] = {
+    { 0, 1 },
+    { 2, 1 },
+    { 0, -1 }, 
+    { 2, -1 },
+    { 1, 1 },
+    { 1, -1 }
 };
 
 Block::Block(string blockName, DataEntry* de) : name(blockName) {
@@ -412,7 +422,7 @@ void World::draw() {
     shader::bind(Registry::shaders["simple"]);
     shader::setMat4("view", view);
     shader::setMat4("proj", proj);
-    gl::bindTexture(Registry::glTextures["entities/cow"].glid, 0);
+    gl::bindTexture(Registry::glTextures["entities/cow_png"].glid, 0);
     shader::setTexture("tex", 0);
     
     for(auto& p : chunks) for(auto& pp : p.second->entities) {
@@ -457,33 +467,47 @@ void World::destroy() {
 
 CuboidsEntityModel::Cuboid::Cuboid(DataEntry* de) {
     if(!de || !de->isMap()) return;
-    for(u8 dir=0; dir<DIRECTION_COUNT; dir++) {
-        DataEntry* dirde = de->schild(directionNames[dir]);
-        if(!dirde || !dirde->isIVEC2()) continue;
-        this->uv_starts[dir] = dirde->getIVEC2();
-    }
+    DataEntry* uvde = de->schild("uv");
+    if(!uvde || !uvde->isIVEC2()) return;
+    this->uv = uvde->getIVEC2();
     DataEntry* dimsde = de->schild("dims");
     if(!dimsde || !dimsde->isIVEC3()) return;
     this->dimensions = dimsde->getIVEC3();
+}
+
+CuboidsEntityModel::AppliedCuboid::AppliedCuboid(const map<string, u32>& cuboidMap, DataEntry* de) {
+    if(!de || !de->isMap()) return;
+
+    DataEntry* facingde = de->schild("facing");
+    if(!facingde || !facingde->isInteger()) facing = EAST;
+    else facing = (Direction)(facingde->geti64()%DIRECTION_COUNT);
+
+    DataEntry* downwardsde = de->schild("downwards");
+    if(!downwardsde || !downwardsde->isInteger()) downwards = DOWN;
+    else downwards = (Direction)(downwardsde->geti64()%DIRECTION_COUNT);
+
+    DataEntry* flipde = de->schild("flip");
+    if(!flipde || !flipde->isInteger()) flip = false;
+    else flip = flipde->geti64();
+    
+    DataEntry* idde = de->schild("id");
+    DataEntry* posde = de->schild("pos");
+    if(!idde || !idde->isStringable() || !posde || !posde->isVEC3()) return;
+    if(cuboidMap.find(idde->str) == cuboidMap.end()) return;
+    id = cuboidMap.at(idde->str);
+    pos = posde->getVEC3();
+
 }
 
 CuboidsEntityModel::Object::Object(const map<string, u32>& cuboidMap, const string& name, DataEntry* de) {
     this->name = name;
     if(!de || !de->isMap()) return;
     DataEntry* pivotde = de->schild("pivot");
-    if(pivotde && pivotde->isIVEC3()) this->pivot = pivotde->getIVEC3();
+    if(pivotde && pivotde->isVEC3()) this->pivot = pivotde->getVEC3();
     DataEntry* cuboidsDe = de->schild("cuboids");
     if(!cuboidsDe || !cuboidsDe->isListable()) return;
     for(DataEntry* apcubde : cuboidsDe->list) {
-        if(!apcubde->isMap()) continue;
-        DataEntry* idde = apcubde->schild("id");
-        DataEntry* posde = apcubde->schild("pos");
-        if(!idde || !idde->isStringable() || !posde || !posde->isIVEC3()) continue;
-        if(cuboidMap.find(idde->str) == cuboidMap.end()) continue;
-        this->cuboids.push_back({
-            .id = cuboidMap.at(idde->str),
-            .pos = posde->getIVEC3()
-        });
+        this->cuboids.push_back(AppliedCuboid(cuboidMap, apcubde));
     }
 }
 
@@ -497,12 +521,7 @@ void EntityModel::setTexture(DataEntry* de) {
     this->texture = tri.usageID;
 }
 
-struct CuboidsIntermediary {
-    glm::ivec3 xyz;
-    glm::ivec2 uv;
-};
-
-CuboidsIntermediary cuboidsVertices[DIRECTION_COUNT*4] = {
+CuboidsEntityModel::VertexIntermediary cuboidsVertices[DIRECTION_COUNT*4] = {
     { { 1, 0, 1 }, { 0, 0 } },
     { { 1, 0, 0 }, { 1, 0 } },
     { { 1, 1, 0 }, { 1, 1 } },
@@ -535,6 +554,52 @@ CuboidsIntermediary cuboidsVertices[DIRECTION_COUNT*4] = {
   
 };
 
+void CuboidsEntityModel::Cuboid::makeIntermediary(CuboidsEntityModel::VertexIntermediary* vi) {
+    memcpy(vi, cuboidsVertices, 24*sizeof(VertexIntermediary));
+    glm::vec3 sdimensions = glm::vec3(dimensions.z, dimensions.y, dimensions.x);
+    for(u32 i=0; i<24; i++)
+        vi[i].xyz = -0.5f*sdimensions + glm::vec3(vi[i].xyz) * sdimensions;
+    glm::ivec2 multipliers[DIRECTION_COUNT] = { 
+        { dimensions.x, -dimensions.y },
+        { dimensions.z, -dimensions.y },
+        { dimensions.x, -dimensions.y },
+        { dimensions.z, -dimensions.y },
+        { -dimensions.x, dimensions.z },
+        { -dimensions.x, dimensions.z },
+    };
+    glm::ivec2 offsets[DIRECTION_COUNT] = { 
+        { 0, dimensions.y},
+        { -dimensions.z, dimensions.y },
+        { dimensions.x+dimensions.z, dimensions.y },
+        { dimensions.x, dimensions.y },
+        { dimensions.x, -dimensions.z },
+        { 2*dimensions.x, -dimensions.z }
+    };
+    for(u32 i=0; i<24; i++)
+        vi[i].uv = vi[i].uv * multipliers[i/4] + offsets[i/4] + uv;
+}
+
+void CuboidsEntityModel::AppliedCuboid::makeIntermediary(CuboidsEntityModel::VertexIntermediary* vi) {
+    glm::mat3 rotation_mat = {};
+    glm::ivec2 facingAS = directionToAxisAndSign[facing];
+    glm::ivec2 downwardsAS = directionToAxisAndSign[downwards];
+    if(downwardsAS.x == facingAS.x) return;
+    glm::ivec2 other = { 0, flip ? -1 : 1 };
+    if(downwardsAS.x == 0 || facingAS.x == 0)
+        other.x = 1;
+    if(downwardsAS.x == 1 || facingAS.x == 1)
+        other.x = 2;
+    other.y *= facingAS.y * downwardsAS.y;
+    // due to default directions
+    rotation_mat[facingAS.x][0] = facingAS.y;
+    rotation_mat[downwardsAS.x][1] = -downwardsAS.y;
+    rotation_mat[other.x][2] = other.y;
+    if(glm::determinant(rotation_mat) < 0)
+        rotation_mat[other.x][2] = -other.y;
+    for(u32 i=0; i<24; i++)
+        vi[i].xyz = pos + rotation_mat * vi[i].xyz;
+}
+
 CuboidsEntityModel::CuboidsEntityModel(DataEntry* de) {
     if(!de || !de->isMap() || !de->has("cuboids") || !de->has("objects"))
         return;
@@ -556,48 +621,30 @@ void CuboidsEntityModel::makeMesh(Entity* entity) {
     GLTexture& gltexture = Registry::glTextures.items[texture];
     mesh.indices.clear();
     mesh.vertices.clear();
-
-    for(Object& object : objects) {
-        for(AppliedCuboid& apc : object.cuboids) {
-            for(u32 dir = 0; dir<DIRECTION_COUNT; dir++) {
-                CuboidsIntermediary cbi[4];
-                for(u32 i=0; i<4; i++) {
-                    cbi[i] = cuboidsVertices[dir*4+i];
-                    cbi[i].xyz = cbi[i].xyz * cuboids[apc.id].dimensions + apc.pos;
-                    glm::vec2 uv = glm::vec2(cbi[i].uv);
-                    switch(dir) {
-                        case EAST: case WEST:
-                            uv *= glm::vec2(cuboids[apc.id].dimensions.x, cuboids[apc.id].dimensions.y);
-                            break;
-                        case NORTH: case SOUTH:
-                            uv *= glm::vec2(cuboids[apc.id].dimensions.z, cuboids[apc.id].dimensions.y);
-                            break;
-                        case UP: case DOWN:
-                            uv *= glm::vec2(cuboids[apc.id].dimensions.z, cuboids[apc.id].dimensions.x);
-                            break;
-                    }
-                    uv += glm::vec2(cuboids[apc.id].uv_starts[dir]);
-                    uv /= glm::vec2(gltexture.width, gltexture.height);
-                    // we have dims
-                    // and wee need to extract 2 coords from it
-
-                    mesh.vertices.push_back((SimpleVertex) { 
-                        .position = glm::vec3(cbi[i].xyz) / (f32)Registry::ATLASTILE,
-                        .color = glm::vec4(1.0, 1.0, 1.0, 1.0),
-                        .texCoords = uv
-                    });
-                }
-                mesh.indices.push_back(mesh.vertices.size()-4 + 0);
-                mesh.indices.push_back(mesh.vertices.size()-4 + 1);
-                mesh.indices.push_back(mesh.vertices.size()-4 + 3);
-                mesh.indices.push_back(mesh.vertices.size()-4 + 3);
-                mesh.indices.push_back(mesh.vertices.size()-4 + 1);
-                mesh.indices.push_back(mesh.vertices.size()-4 + 2);
-            }
-        }
-    }
     mesh.position = entity->pos;
     mesh.scaling = glm::vec3(1, 1, 1);
+
+    for(Object& object : objects) for(AppliedCuboid& apc : object.cuboids) {
+        VertexIntermediary vi[24];
+        cuboids[apc.id].makeIntermediary(vi);
+        apc.makeIntermediary(vi);
+        
+        for(u32 dir=0; dir<DIRECTION_COUNT; dir++) {
+            for(u32 i=dir*4; i<(dir+1)*4; i++)
+                mesh.vertices.push_back((SimpleVertex) { 
+                    .position = vi[i].xyz / (f32)Registry::ATLASTILE,
+                    .color = glm::vec4(1.0, 1.0, 1.0, 1.0),
+                    .texCoords = glm::vec2(vi[i].uv) / glm::vec2(gltexture.width, gltexture.height)
+                });
+            mesh.indices.push_back(mesh.vertices.size()-4 + 0);
+            mesh.indices.push_back(mesh.vertices.size()-4 + 1);
+            mesh.indices.push_back(mesh.vertices.size()-4 + 3);
+            mesh.indices.push_back(mesh.vertices.size()-4 + 3);
+            mesh.indices.push_back(mesh.vertices.size()-4 + 1);
+            mesh.indices.push_back(mesh.vertices.size()-4 + 2);
+        }
+    }
+    
     mesh.makeObjects();
 }
 
