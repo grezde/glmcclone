@@ -220,8 +220,8 @@ void Registry::init() {
             continue;
         }
         fe.removeExtension(2);
-        cout << fe.name << "\n";
         entities.add(fe.name, EntityType(fe.name, de));
+        entities.items[entities.items.size()-1].id = entities.items.size()-1;
         delete de;
     }
 

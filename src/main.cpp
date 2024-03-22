@@ -8,7 +8,8 @@ int main(int argc, const char** argv) {
     (void) argv;
     
     Game::init();
-    
+    Log::info("hello there ", 3, " ", 4);
+
     //string text = readFileString("assets/entities/cow.td");
     //cout << text << "\n\n";
     //DataEntry* de = DataEntry::readText(text);

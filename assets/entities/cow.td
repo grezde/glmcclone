@@ -11,22 +11,15 @@
             // by default, the unwrapping face is towards the east, in the up direction
             dims: (12, 18, 10)
         },
-        leg: {
-            uv: (4, 20),
-            dims: (4, 12, 4) 
-        },
-        head: {
-            uv: (6, 6),
-            dims: (8, 8, 6) 
-        },
-        horn: {
-            uv: (23, 1),
-            dims: (1, 3, 1)
-        }
+        leg: { uv: (4, 20), dims: (4, 12, 4) },
+        head: { uv: (6, 6), dims: (8, 8, 6) },
+        horn: { uv: (23, 1), dims: (1, 3, 1) }
     },
     objects: {
         body: {
-            cuboids: [ { id: "body", pos: (0, 17, 0), facing: up, downwards: east }]
+            cuboids: [ 
+                { id: "body", pos: (0, 17, 0), facing: up, downwards: east },
+            ]
         },
         head: {
             pivot: (11, 20, 0),

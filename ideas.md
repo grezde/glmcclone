@@ -4,7 +4,7 @@
 ## TODOS
 
 - Fix shaders and uniforms to use numbers instead of strings
-- Split world.cpp file into multiple files
+- ~~Split world.cpp file into multiple files~~
 - ~~Add a a direction parameter to the faces of the cube model~~
 - ~~Check faces on chunk edges~~
 - Add toggleable gravity force and collision for the player

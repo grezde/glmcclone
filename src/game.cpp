@@ -1,4 +1,5 @@
 #include "game.hpp"
+#include "base.hpp"
 #include "renderer.hpp"
 #include "resources.hpp"
 #include <GLFW/glfw3.h>
@@ -124,7 +125,7 @@ void Game::run() {
         shader::bind(Registry::shaders["voxel"]);
         shader::setMat4("view", view);
         shader::setMat4("proj", proj);
-        gl::bindTexture(Registry::glTextures["blockAtlas"].glid, 0);
+        gl::bindTexture(Registry::glTextures["atlas"].glid, 0);
         shader::setTexture("tex", 0);
 
         testWorld.draw();
@@ -138,3 +139,62 @@ void Game::destory() {
     window::destroy();
 }
 
+std::ofstream Log::logfile;
+Log::logger Log::fatal = logger {
+    .color = 1,
+    .prefix = "FATAL"
+};
+Log::logger Log::error = logger {
+    .color = 1,
+    .prefix = "ERROR"
+};
+Log::logger Log::warning = logger {
+    .color = 1,
+    .prefix = "WARN"
+};
+Log::logger Log::info = logger {
+    .color = 1,
+    .prefix = "INFO"
+};
+
+#ifdef WINDOWS
+
+#include <windows.h>
+
+HANDLE hConsole;
+CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+WORD saved_attributes;
+
+void initConsole() {
+    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+    saved_attributes = consoleInfo.wAttributes;
+}
+
+void Log::changeColor(u8 color) {
+    SetConsoleTextAttribute(hConsole, FOREGROUND_BLUE);
+}
+
+void Log::resetColor() {
+    SetConsoleTextAttribute(hConsole, saved_attributes);
+}
+
+#else
+
+void initConsole() {}
+
+void Log::changeColor(u8 color) {
+    cerr << "\x1b[0;30m";
+}
+
+void Log::resetColor() {
+    cerr << "\x1b[0m";
+}
+
+#endif
+
+void Log::init() {
+    initConsole();
+    logfile.open("output/log.txt");
+    if(!logfile.is_open()) ERR_EXIT("Cound not open log file");
+}
