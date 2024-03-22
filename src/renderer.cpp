@@ -19,6 +19,16 @@ const char* window::title = nullptr;
 bool window::disabledCursor = false;
 glm::vec2 window::mousePos = { 0, 0 };
 
+void gl::updateVBO(u32 VBO, void* values, u32 size) {
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, size, values, GL_STATIC_DRAW);
+}
+
+void gl::updateEBO(u32 EBO, const vector<u32>& values) {
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, values.size()*4, values.data(), GL_STATIC_DRAW);
+}
+
 u32 gl::generateVBO(void* values, u32 size) {
     u32 VBO;
     glGenBuffers(1, &VBO);
@@ -40,6 +50,11 @@ u32 gl::generateVAO() {
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
     return VAO;
+}
+
+void gl::drawVAO(u32 VAO, u32 count) {
+    glBindVertexArray(VAO);
+    glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, nullptr);
 }
 
 void gl::addAttribToVAO(u32 index, i32 size, u32 type, i32 stride, u32 offset) {
@@ -221,48 +236,22 @@ bool window::isPressed(i32 key) {
     return glfwGetKey(window::window, key) == GLFW_PRESS;
 }
 
-void SimpleMesh::makeObjects() {
-    using namespace gl;
-    VBO = generateVBO(vertices.data(), vertices.size()*sizeof(*vertices.data()));
-    VAO = generateVAO();
-    addAttribToVAO(0, 3, GL_FLOAT, 8*sizeof(float), 0);
-    addAttribToVAO(1, 3, GL_FLOAT, 8*sizeof(float), 3*sizeof(float));
-    addAttribToVAO(2, 2, GL_FLOAT, 8*sizeof(float), 6*sizeof(float));
-    EBO = generateEBO(indices);
+void SimpleMesh::addAttribs() {
+    gl::addAttribToVAO(0, 3, GL_FLOAT, 8*sizeof(float), 0);
+    gl::addAttribToVAO(1, 3, GL_FLOAT, 8*sizeof(float), 3*sizeof(float));
+    gl::addAttribToVAO(2, 2, GL_FLOAT, 8*sizeof(float), 6*sizeof(float));
 }
 
 void SimpleMesh::updateUniforms() {
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::scale(model, scaling);
-    model = glm::translate(model, position);
-    shader::setMat4("model", model);
+   shader::setMat4("model", modelMatrix);
 }
 
-void SimpleMesh::draw() {
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
-    //glDrawArrays(GL_TRIANGLES, 0, 3);
-}
-
-
-void VoxelMesh::makeObjects() {
-    using namespace gl;
-    VBO = generateVBO(vertices.data(), vertices.size()*sizeof(*vertices.data()));
-    VAO = generateVAO();
-    if(sizeof(VoxelVertex) != 8)
-        ERR_EXIT("assertion of size failed: 8 != " << sizeof(VoxelVertex));
-    addAttribToVAO(0, 1, GL_UNSIGNED_INT, sizeof(VoxelVertex), 0);
-    addAttribToVAO(1, 1, GL_UNSIGNED_INT, sizeof(VoxelVertex), 4);
-    EBO = generateEBO(indices);
+void VoxelMesh::addAttribs() {
+    gl::addAttribToVAO(0, 1, GL_UNSIGNED_INT, sizeof(VoxelVertex), 0);
+    gl::addAttribToVAO(1, 1, GL_UNSIGNED_INT, sizeof(VoxelVertex), 4);
 }
 
 void VoxelMesh::updateUniforms() {
     shader::setIvec3("chunkCoords", chunkCoords);
-}
-
-void VoxelMesh::draw() {
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
-    //glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 

@@ -25,16 +25,21 @@ struct Entity {
     glm::vec3 pos, vel;
     glm::vec3 lookingAt;
     DataEntry* data;
-    SimpleMesh mesh;
+    vector<SimpleMesh> meshes;
+
+    void updateMeshes(f32 time);
 };
 
 struct EntityModel {
+    u32 type;
     u32 texture;
+    EntityModel(u32 type) : type(type) {}
     void setTexture(DataEntry* de);
     virtual void makeMesh(Entity* entity) = 0;
 };
 
 struct NoEntityModel : EntityModel {
+    NoEntityModel();
     static EntityModel* constructor(DataEntry*) { return new NoEntityModel(); }
     virtual inline void makeMesh(Entity*) {};
 };

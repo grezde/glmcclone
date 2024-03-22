@@ -4,7 +4,7 @@
 #include "game.hpp"
 #include "renderer.hpp"
 #include "world.hpp"
-
+#include "entity.hpp"
 
 template<typename T, typename keyT = std::string, typename mapT = std::map<keyT, u32>>
 struct registry {

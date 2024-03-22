@@ -2,6 +2,7 @@
 #include "base.hpp"
 #include "renderer.hpp"
 #include "resources.hpp"
+#include "engine.hpp"
 #include <GLFW/glfw3.h>
 #include <cstring>
 #include <glm/ext/matrix_clip_space.hpp>
@@ -79,6 +80,7 @@ void Game::processInput(f32 dt) {
 }
 
 void Game::init() {
+    Log::init();
     window::init(1200, 900, "Hello warld");
     Registry::init();
     testWorld.init();
@@ -128,7 +130,7 @@ void Game::run() {
         gl::bindTexture(Registry::glTextures["atlas"].glid, 0);
         shader::setTexture("tex", 0);
 
-        testWorld.draw();
+        testWorld.draw(time);
 
         window::endDrawing();
     }
@@ -142,19 +144,23 @@ void Game::destory() {
 std::ofstream Log::logfile;
 Log::logger Log::fatal = logger {
     .color = 1,
-    .prefix = "FATAL"
+    .prefix = "FATAL",
+    .shouldExit = true
 };
 Log::logger Log::error = logger {
     .color = 1,
-    .prefix = "ERROR"
+    .prefix = "ERROR",
+    .shouldExit = false
 };
 Log::logger Log::warning = logger {
     .color = 1,
-    .prefix = "WARN"
+    .prefix = "WARN",
+    .shouldExit = false
 };
 Log::logger Log::info = logger {
     .color = 1,
-    .prefix = "INFO"
+    .prefix = "INFO",
+    .shouldExit = false
 };
 
 #ifdef WINDOWS
@@ -184,6 +190,8 @@ void Log::resetColor() {
 void initConsole() {}
 
 void Log::changeColor(u8 color) {
+    (void) color;
+    // TODO: implement colors in logging
     cerr << "\x1b[0;30m";
 }
 

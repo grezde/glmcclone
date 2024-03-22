@@ -21,7 +21,7 @@ u32 Chunk::indexOf(glm::ivec3 inChunkCoords) {
 
 void Chunk::makeSin(glm::ivec3 coords) {
     for(u32 x=0; x<CHUNKSIZE; x++) for(u32 z=0; z<CHUNKSIZE; z++) {
-        u32 height = 15 + 10*std::sin(0.1*(f32)(coords.x*CHUNKSIZE+x))*std::sin(0.1*(f32)(coords.z*CHUNKSIZE+z));
+        u32 height = 15.0f + 10.0f*std::sin(0.1*(f32)(coords.x*CHUNKSIZE+x))*std::sin(0.1*(f32)(coords.z*CHUNKSIZE+z));
         for(u32 y=0; y<CHUNKSIZE; y++) {
             u32 i = indexOf({x, y, z});
             f32 r = (f32)rand()/(f32)RAND_MAX;
@@ -31,7 +31,9 @@ void Chunk::makeSin(glm::ivec3 coords) {
             } else if(y < height)
                 blocks[i] = Registry::blocks.names["dirt"];
             else if(y == height) {
-                if(r < 0.05) blocks[i] = Registry::blocks.names["dirt"];
+                if(r < 0.35) blocks[i] = Registry::blocks.names["sand"];
+                //else if(r < 0.4) blocks[i] = Registry::blocks.names["red_sand"];
+                else if(r < 0.45) blocks[i] = Registry::blocks.names["dirt"];
                 else blocks[i] = Registry::blocks.names["grass"];
             }
             else 
@@ -84,10 +86,11 @@ void World::updateRenderChunks() {
 }
 
 void World::init() {
-    // 300 chunks got 25 fps with simple shader and pretty good laptop gpu
-    // and a very long load time (probabily transfering from cpu to gpu)
-    // Using reduced memory, I got it to 40 fps (at full battery)
-    for(u32 x=0; x<5; x++) for(u32 z=0; z<5; z++) for(u32 y=0; y<1; y++) {
+    i32 rd = 5;
+    glm::ivec3 start = {-rd, 0, -rd};
+    glm::ivec3 end = { rd, 1, rd};
+
+    for(i32 x=start.x; x<end.x; x++) for(i32 z=start.z; z<end.z; z++) for(i32 y=start.y; y<end.y; y++) {
         glm::ivec3 p = {x, y, z};
         
         WorldChunk* wc = new WorldChunk(p);
@@ -107,7 +110,7 @@ void World::init() {
         wc->entities[cown] = cow;
     }
 
-    for(u32 x=0; x<5; x++) for(u32 z=0; z<5; z++) for(u32 y=0; y<1; y++) {
+    for(i32 x=start.x; x<end.x; x++) for(i32 z=start.z; z<end.z; z++) for(i32 y=start.y; y<end.y; y++) {
         glm::ivec3 p = {x, y, z};
         WorldChunk* wc = chunks[p];
         Chunk* neighbours[6];
@@ -123,8 +126,8 @@ void World::init() {
     }
 }
 
-void World::draw() {
-    
+void World::draw(f32 time) {
+
     glm::vec3& cameraPos = Game::cameraPos;
     glm::vec2& cameraAngle = Game::cameraAngle;
     glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
@@ -143,6 +146,7 @@ void World::draw() {
         p.second->mesh.updateUniforms();
         p.second->mesh.draw();
     }
+
     shader::bind(Registry::shaders["simple"]);
     shader::setMat4("view", view);
     shader::setMat4("proj", proj);
@@ -151,9 +155,12 @@ void World::draw() {
     
     for(auto& p : chunks) for(auto& pp : p.second->entities) {
         u32 textureID = Registry::entities.items[pp.second->type].model->texture;
+        pp.second->updateMeshes(time);
         gl::bindTexture(Registry::glTextures.items[textureID].glid, 0);
-        pp.second->mesh.updateUniforms();
-        pp.second->mesh.draw();
+        for(auto& mesh : pp.second->meshes) {
+            mesh.updateUniforms();
+            mesh.draw();
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 {
     model: "cuboids",
-    texture: "entities/rainbow_cow",
+    texture: "entities/cow",
     movement: "quadruped",
     aabb: { start: (-1.0, -1.0, -1.0), dims: (2.0, 2.0, 2.0) },
     cuboids: {
@@ -13,12 +13,14 @@
         },
         leg: { uv: (4, 20), dims: (4, 12, 4) },
         head: { uv: (6, 6), dims: (8, 8, 6) },
-        horn: { uv: (23, 1), dims: (1, 3, 1) }
+        horn: { uv: (23, 1), dims: (1, 3, 1) },
+        udder: { uv: (53, 1), dims: (4, 6, 1) }
     },
     objects: {
         body: {
             cuboids: [ 
                 { id: "body", pos: (0, 17, 0), facing: up, downwards: east },
+                { id: "udder", pos: (-6, 11.5, 0), facing: down, downwards: east }
             ]
         },
         head: {

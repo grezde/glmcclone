@@ -14,8 +14,11 @@ namespace gl {
 
     u32 generateVBO(void* values, u32 size);
     u32 generateEBO(const vector<u32>& values);
+    void updateVBO(u32 VBO, void* values, u32 size);
+    void updateEBO(u32 EBO, const vector<u32>& values);
     u32 generateVAO();
     void addAttribToVAO(u32 index, i32 size, u32 type, i32 stride, u32 offset);
+    void drawVAO(u32 VAO, u32 count);
 
     u32 textureFromFile(const char* filename, u32 channels = 4);
     u32 textureFromMemory(u8* data, u32 width, u32 height, u32 channels = 4);
@@ -54,24 +57,51 @@ namespace window {
 
 // Simple Shader Implementation
 
+template<typename VertexT>
+struct Mesh {
+    vector<VertexT> vertices;
+    vector<u32> indices;
+    u32 indicesCount = 0;
+    u32 VAO, VBO, EBO;
+
+    virtual void addAttribs() = 0;
+    virtual void updateUniforms() = 0;
+
+    void makeObjects() {
+        using namespace gl;
+        if(indicesCount != 0) {
+            indicesCount = indices.size();
+            updateVBO(VBO, vertices.data(), vertices.size()*sizeof(*vertices.data()));
+            updateEBO(EBO, indices);
+        }
+        else {
+            indicesCount = indices.size();
+            VBO = generateVBO(vertices.data(), vertices.size()*sizeof(*vertices.data()));
+            VAO = generateVAO();
+            this->addAttribs();
+            EBO = generateEBO(indices);
+        }
+        indices.clear(); indices.shrink_to_fit();
+        vertices.clear(); vertices.shrink_to_fit();
+    }
+
+    void draw() {
+        gl::drawVAO(VAO, indicesCount);
+    }
+};
+
 struct SimpleVertex {
     glm::vec3 position;
     glm::vec3 color;
     glm::vec2 texCoords;
 };
 
-struct SimpleMesh {
+struct SimpleMesh : Mesh<SimpleVertex> {
 
-    vector<SimpleVertex> vertices;
-    vector<u32> indices;
-    u32 VAO, VBO, EBO;
-    glm::vec3 position = { 0, 0, 0 };
-    //glm::vec3 rotation;
-    glm::vec3 scaling = { 1, 1, 1 };
+    glm::mat4 modelMatrix = glm::mat4(1);
 
-    void makeObjects();
-    void updateUniforms();
-    void draw();
+    virtual void addAttribs();
+    virtual void updateUniforms();
 
 };
 
@@ -82,15 +112,11 @@ struct VoxelVertex {
     u32 texCoords;
 };
 
-struct VoxelMesh {
+struct VoxelMesh : Mesh<VoxelVertex> {
 
-    vector<VoxelVertex> vertices;
-    vector<u32> indices;
-    u32 VAO, VBO, EBO;
     glm::ivec3 chunkCoords;
 
-    void makeObjects();
-    void updateUniforms();
-    void draw();
+    virtual void addAttribs();
+    virtual void updateUniforms();
 
 };

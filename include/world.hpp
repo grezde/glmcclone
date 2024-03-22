@@ -40,6 +40,6 @@ struct World {
     void updateRenderChunks();
     void init();
     void update(f32 time, f32 dt);
-    void draw();
+    void draw(f32 time);
     void destroy();
 };

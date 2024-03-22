@@ -7,8 +7,9 @@ int main(int argc, const char** argv) {
     (void) argc;
     (void) argv;
     
+    Log::info("Started game");
     Game::init();
-    Log::info("hello there ", 3, " ", 4);
+    Log::info("Finished init");
 
     //string text = readFileString("assets/entities/cow.td");
     //cout << text << "\n\n";

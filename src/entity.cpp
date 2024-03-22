@@ -2,6 +2,30 @@
 #include "data.hpp"
 #include "resources.hpp"
 #include <cstring>
+#include <glm/ext/matrix_transform.hpp>
+
+void Entity::updateMeshes(f32 time) {
+    CuboidsEntityModel* model = (CuboidsEntityModel*)Registry::entities.items[type].model;
+    if(!model) return;
+    u32 index=0;
+    for(CuboidsEntityModel::Object& o : model->objects) {
+        glm::mat4 matrix(1);
+        matrix = glm::translate(matrix, pos);
+        matrix = glm::translate(matrix, o.pivot/(f32)Registry::ATLASTILE);
+        if(o.name == "head") {
+            matrix = glm::rotate(matrix, 0.2f*std::sin(2.0f*time), {0, 1, 0});
+        } else if(o.name == "leg0" || o.name == "leg2") {
+            matrix = glm::rotate(matrix, -0.5f*std::sin(time+0.5f), {0, 0, 1});
+        } else if(o.name == "leg1" || o.name == "leg3") {
+            matrix = glm::rotate(matrix, 0.5f*std::sin(time+1.0f), {0, 0, 1});
+        }
+        matrix = glm::translate(matrix, -o.pivot/(f32)Registry::ATLASTILE);
+        meshes[index].modelMatrix = matrix;
+        index++;
+    }
+}
+
+NoEntityModel::NoEntityModel() : EntityModel(Registry::entityModels.names["none"]) {}
 
 CuboidsEntityModel::Cuboid::Cuboid(DataEntry* de) {
     if(!de || !de->isMap()) return;
@@ -39,6 +63,7 @@ CuboidsEntityModel::AppliedCuboid::AppliedCuboid(const map<string, u32>& cuboidM
 
 CuboidsEntityModel::Object::Object(const map<string, u32>& cuboidMap, const string& name, DataEntry* de) {
     this->name = name;
+    this->pivot = {0,0,0};
     if(!de || !de->isMap()) return;
     DataEntry* pivotde = de->schild("pivot");
     if(pivotde && pivotde->isVEC3()) this->pivot = pivotde->getVEC3();
@@ -147,7 +172,7 @@ void CuboidsEntityModel::AppliedCuboid::makeIntermediary(CuboidsEntityModel::Ver
     }
 }
 
-CuboidsEntityModel::CuboidsEntityModel(DataEntry* de) {
+CuboidsEntityModel::CuboidsEntityModel(DataEntry* de) : EntityModel(Registry::entityModels.names["cuboids"]) {
     if(!de || !de->isMap() || !de->has("cuboids") || !de->has("objects"))
         return;
     setTexture(de);
@@ -164,35 +189,35 @@ CuboidsEntityModel::CuboidsEntityModel(DataEntry* de) {
 }
 
 void CuboidsEntityModel::makeMesh(Entity* entity) {
-    SimpleMesh& mesh = entity->mesh;
     GLTexture& gltexture = Registry::glTextures.items[texture];
-    mesh.indices.clear();
-    mesh.vertices.clear();
-    mesh.position = entity->pos;
-    mesh.scaling = glm::vec3(1, 1, 1);
 
-    for(Object& object : objects) for(AppliedCuboid& apc : object.cuboids) {
-        VertexIntermediary vi[24];
-        cuboids[apc.id].makeIntermediary(vi);
-        apc.makeIntermediary(vi);
-        
-        for(u32 dir=0; dir<DIRECTION_COUNT; dir++) {
-            for(u32 i=dir*4; i<(dir+1)*4; i++)
-                mesh.vertices.push_back(SimpleVertex { 
-                    .position = vi[i].xyz / (f32)Registry::ATLASTILE,
-                    .color = glm::vec4(1.0, 1.0, 1.0, 1.0),
-                    .texCoords = glm::vec2(vi[i].uv) / glm::vec2(gltexture.width, gltexture.height)
-                });
-            mesh.indices.push_back(mesh.vertices.size()-4 + 0);
-            mesh.indices.push_back(mesh.vertices.size()-4 + 1);
-            mesh.indices.push_back(mesh.vertices.size()-4 + 3);
-            mesh.indices.push_back(mesh.vertices.size()-4 + 3);
-            mesh.indices.push_back(mesh.vertices.size()-4 + 1);
-            mesh.indices.push_back(mesh.vertices.size()-4 + 2);
+    for(Object& object : objects) {
+        SimpleMesh mesh;
+        mesh.modelMatrix = glm::translate(mesh.modelMatrix, entity->pos);
+        for(AppliedCuboid& apc : object.cuboids) {
+            VertexIntermediary vi[24];
+            cuboids[apc.id].makeIntermediary(vi);
+            apc.makeIntermediary(vi);
+            
+            for(u32 dir=0; dir<DIRECTION_COUNT; dir++) {
+                for(u32 i=dir*4; i<(dir+1)*4; i++)
+                    mesh.vertices.push_back(SimpleVertex { 
+                        .position = vi[i].xyz / (f32)Registry::ATLASTILE,
+                        .color = glm::vec4(1.0, 1.0, 1.0, 1.0),
+                        .texCoords = glm::vec2(vi[i].uv) / glm::vec2(gltexture.width, gltexture.height)
+                    });
+                mesh.indices.push_back(mesh.vertices.size()-4 + 0);
+                mesh.indices.push_back(mesh.vertices.size()-4 + 1);
+                mesh.indices.push_back(mesh.vertices.size()-4 + 3);
+                mesh.indices.push_back(mesh.vertices.size()-4 + 3);
+                mesh.indices.push_back(mesh.vertices.size()-4 + 1);
+                mesh.indices.push_back(mesh.vertices.size()-4 + 2);
+            }
         }
+        mesh.makeObjects();
+        entity->meshes.push_back(mesh);
     }
     
-    mesh.makeObjects();
 }
 
 EntityModel* CuboidsEntityModel::constructor(DataEntry *de) {
