@@ -1,5 +1,6 @@
 #include "base.hpp"
 #include "data.hpp"
+#include "engine.hpp"
 #include "game.hpp"
 #include "resources.hpp"
 

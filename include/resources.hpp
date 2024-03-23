@@ -14,7 +14,7 @@ struct registry {
     inline bool has(const keyT& name) const { return names.find(name) != names.end(); }
     inline T& operator[](const keyT& name) { return items[names.at(name)]; }
     inline const T& operator[](const keyT& name) const { return items[names.at(name)]; }
-    inline void add(const keyT& name, const T& value) { names[name] = items.size(); items.push_back(value); }
+    inline u32 add(const keyT& name, const T& value) { names[name] = items.size(); items.push_back(value); return items.size()-1; }
     
     void print(std::ostream& out, const string& name) {
         out << "----------------\n" << name << ":\n";

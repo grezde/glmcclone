@@ -12,18 +12,18 @@
 struct DataEntry;
 
 struct AABB {
-    glm::vec3 start;
-    glm::vec3 size;
+    vec3 start;
+    vec3 size;
 };
 
-typedef glm::ivec4 UUID;
+typedef ivec4 UUID;
 inline UUID UUID_make() { return {rand(),rand(),rand(),rand()}; }
 
 struct Entity {
     u32 type;
     UUID uuid;
-    glm::vec3 pos, vel;
-    glm::vec3 lookingAt;
+    vec3 pos, vel, acc;
+    vec3 lookingAt;
     DataEntry* data;
     vector<SimpleMesh> meshes;
 
@@ -47,13 +47,13 @@ struct NoEntityModel : EntityModel {
 struct CuboidsEntityModel : EntityModel {
     
     struct VertexIntermediary {
-        glm::vec3 xyz;
-        glm::ivec2 uv;
+        vec3 xyz;
+        ivec2 uv;
     };
 
     struct Cuboid {
-        glm::ivec2 uv;
-        glm::ivec3 dimensions;
+        ivec2 uv;
+        ivec3 dimensions;
 
         void makeIntermediary(VertexIntermediary* vi);
         Cuboid(DataEntry* de);
@@ -61,7 +61,7 @@ struct CuboidsEntityModel : EntityModel {
 
     struct AppliedCuboid {
         u32 id;
-        glm::vec3 pos;
+        vec3 pos;
         Direction facing, downwards;
         bool flip;
 
@@ -71,7 +71,7 @@ struct CuboidsEntityModel : EntityModel {
 
     struct Object {
         string name;
-        glm::vec3 pivot;
+        vec3 pivot;
         vector<AppliedCuboid> cuboids;
         Object(const map<string, u32>& cuboidMap, const string& name, DataEntry* de);
     };

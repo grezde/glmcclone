@@ -7,9 +7,9 @@ namespace Game {
     extern bool inspectMode;
     extern bool printFPS;
     extern World testWorld;
-    extern glm::vec2 cameraAngle;
-    extern glm::vec3 cameraPos;
-    extern glm::vec3 cameraVel;
+    extern vec2 cameraAngle;
+    extern vec3 cameraPos;
+    extern vec3 cameraVel;
 
     void init();
     void run();

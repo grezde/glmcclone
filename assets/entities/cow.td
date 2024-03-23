@@ -2,7 +2,7 @@
     model: "cuboids",
     texture: "entities/cow",
     movement: "quadruped",
-    aabb: { start: (-1.0, -1.0, -1.0), dims: (2.0, 2.0, 2.0) },
+    aabb: { start: (-0.8, 0, -0.6), dims: (1.6, 1.0, 1.2) },
     cuboids: {
         body: {
             // uv represents the top-right corner of the face where the unwrapping begins
@@ -27,8 +27,8 @@
             pivot: (11, 20, 0),
             cuboids: [ 
                 { id: "head", pos: (12, 20, 0) }, 
-                { id: "horn", pos: (11, 24, -5.5) }, 
-                { id: "horn", pos: (11, 24, 4.5), flip: true }
+                { id: "horn", pos: (11.5, 23.5, -5.5) }, 
+                { id: "horn", pos: (11.5, 23.5, 4.5), flip: true }
             ]
         },
         leg0: {

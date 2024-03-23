@@ -32,28 +32,36 @@ namespace shader {
     // TODO: see how std::map implements a hash template and use the same thing to use either locations or uniform names for binding
     void setTexture(const char* name, u32 slot);
     void setFloat(const char* name, f32 value);
-    void setVec3(const char* name, const glm::vec3& value);
-    void setMat4(const char* name, const glm::mat4& value);
-    void setIvec3(const char* name, const glm::ivec3& value);
+    void setVec3(const char* name, const vec3& value);
+    void setMat4(const char* name, const mat4& value);
+    void setIvec3(const char* name, const ivec3& value);
 };
 
 
 // GLFW window wrapper
 namespace window {
-    extern glm::vec4 clearColor;
+    extern vec4 clearColor;
     extern GLFWwindow* window;
     extern i32 width, height;
     extern const char* title;
-    extern bool disabledCursor;
-    extern glm::vec2 mousePos;
     
     void init(i32 width, i32 height, const char* title);
-    bool isPressed(i32 key);
     void beginDrawing();
     void endDrawing();
-    void toggleCursor();
     void destroy();
 };
+
+struct Camera {
+    vec3 pos;
+    vec3 angles;
+    f32 fov;
+    vec2 nearAnFar;
+    
+    mat4 view, proj;
+    void makeMatrices();
+    void setMatrices();
+};
+extern Camera camera;
 
 // Simple Shader Implementation
 
@@ -91,14 +99,14 @@ struct Mesh {
 };
 
 struct SimpleVertex {
-    glm::vec3 position;
-    glm::vec3 color;
-    glm::vec2 texCoords;
+    vec3 position;
+    vec3 color;
+    vec2 texCoords;
 };
 
 struct SimpleMesh : Mesh<SimpleVertex> {
 
-    glm::mat4 modelMatrix = glm::mat4(1);
+    mat4 modelMatrix = mat4(1);
 
     virtual void addAttribs();
     virtual void updateUniforms();
@@ -114,7 +122,7 @@ struct VoxelVertex {
 
 struct VoxelMesh : Mesh<VoxelVertex> {
 
-    glm::ivec3 chunkCoords;
+    ivec3 chunkCoords;
 
     virtual void addAttribs();
     virtual void updateUniforms();

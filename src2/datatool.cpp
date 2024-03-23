@@ -47,15 +47,15 @@ i32 bundle(vector<string>& args) {
     return 0;
 }
 
-glm::ivec3 getFromListI3(DataEntry* de, u32 offset=0) {
+ivec3 getFromListI3(DataEntry* de, u32 offset=0) {
     return { (i32)de->list[offset+0]->geti64(),(i32)de->list[offset+1]->geti64(), (i32)de->list[offset+2]->geti64() };
 }
 
-glm::ivec2 getFromListI2(DataEntry* de, u32 offset=0) {
+ivec2 getFromListI2(DataEntry* de, u32 offset=0) {
     return { (i32)de->list[offset+0]->geti64(),(i32)de->list[offset+1]->geti64() };
 }
 
-DataEntry* makeTupleI2(glm::ivec2 i) {
+DataEntry* makeTupleI2(ivec2 i) {
     DataEntry* dex = new DataEntry(DataEntry::INT64); dex->seti64(i.x);
     DataEntry* dey = new DataEntry(DataEntry::INT64); dey->seti64(i.y);
     DataEntry* fin = new DataEntry(DataEntry::PAIR);
@@ -64,7 +64,7 @@ DataEntry* makeTupleI2(glm::ivec2 i) {
     return fin;
 }
 
-DataEntry* makeTupleI3(glm::ivec3 i) {
+DataEntry* makeTupleI3(ivec3 i) {
     DataEntry* dex = new DataEntry(DataEntry::INT64); dex->seti64(i.x);
     DataEntry* dey = new DataEntry(DataEntry::INT64); dey->seti64(i.y);
     DataEntry* dez = new DataEntry(DataEntry::INT64); dez->seti64(i.z);
@@ -98,7 +98,7 @@ i32 dejem(vector<string>& args) {
     for(DataEntry* part : in->list) {
         string name = part->schild("part")->str;
         i32 i=0;
-        glm::ivec3 translate = getFromListI3(part->schild("translate"));
+        ivec3 translate = getFromListI3(part->schild("translate"));
         DataEntry* object = new DataEntry(DataEntry::MAP);
         objects->dict[name] = object;
         object->dict["pivot"] = makeTupleI3(translate);
@@ -107,9 +107,9 @@ i32 dejem(vector<string>& args) {
 
         for(DataEntry* box : part->schild("boxes")->list) {
             string boxname = part->schild("boxes")->list.size() == 1 ? name : (std::ostringstream() << name << "_" << (i++)).str();
-            glm::ivec2 uv = getFromListI2(box->schild("textureOffset"));
-            glm::ivec3 pos = getFromListI3(box->schild("coordinates"), 0);
-            glm::ivec3 dims = getFromListI3(box->schild("coordinates"), 3);
+            ivec2 uv = getFromListI2(box->schild("textureOffset"));
+            ivec3 pos = getFromListI3(box->schild("coordinates"), 0);
+            ivec3 dims = getFromListI3(box->schild("coordinates"), 3);
 
             DataEntry* cuboid = new DataEntry(DataEntry::MAP);
             cuboid->dict["dims"] = makeTupleI3(dims);

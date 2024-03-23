@@ -1,6 +1,7 @@
 #include <cmath>
 #include <cstring>
 #include <glad/glad.h>
+#include "engine.hpp"
 #include "renderer.hpp"
 #include <glm/ext/matrix_float4x4.hpp>
 #include <glm/ext/matrix_projection.hpp>
@@ -12,12 +13,17 @@
 #include "game.hpp"
 
 u32 shader::currentShader = 0;
-glm::vec4 window::clearColor = { 0.2f, 0.3f, 0.3f, 1.0f };
+vec4 window::clearColor = { 0.2f, 0.3f, 0.3f, 1.0f };
 GLFWwindow* window::window = nullptr;
 i32 window::width = 0, window::height = 0;
 const char* window::title = nullptr;
-bool window::disabledCursor = false;
-glm::vec2 window::mousePos = { 0, 0 };
+Camera camera = {
+    .pos = {0,0,0},
+    .angles = {0,0,0},
+    .fov = 70,
+    .nearAnFar = {0.1f, 1000.0f},
+    .view={}, .proj={},
+};
 
 void gl::updateVBO(u32 VBO, void* values, u32 size) {
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -153,15 +159,15 @@ void shader::setFloat(const char* name, f32 value) {
     glUniform1f(glGetUniformLocation(currentShader, name), value);
 }
 
-void shader::setVec3(const char* name, const glm::vec3& value) {
+void shader::setVec3(const char* name, const vec3& value) {
     glUniform3fv(glGetUniformLocation(currentShader, name), 1, glm::value_ptr(value));   
 }
 
-void shader::setMat4(const char* name, const glm::mat4& value) {
+void shader::setMat4(const char* name, const mat4& value) {
     glUniformMatrix4fv(glGetUniformLocation(currentShader, name), 1, GL_FALSE, glm::value_ptr(value));
 }
 
-void shader::setIvec3(const char* name, const glm::ivec3& value) {
+void shader::setIvec3(const char* name, const ivec3& value) {
     glUniform3iv(glGetUniformLocation(currentShader, name), 1, glm::value_ptr(value));
 }
 
@@ -170,12 +176,6 @@ static void framebuffer_size_callback(GLFWwindow* window, int width, int height)
     glViewport(0, 0, width, height);
     window::width = width;
     window::height = height;
-}
-
-static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
-    (void) window;
-    window::mousePos.x = xpos;
-    window::mousePos.y = ypos;
 }
 
 void window::init(i32 width, i32 height, const char *title) {
@@ -196,7 +196,6 @@ void window::init(i32 width, i32 height, const char *title) {
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     //glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-    glfwSetCursorPosCallback(window, cursor_position_callback);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         glfwTerminate();
@@ -227,14 +226,20 @@ void window::destroy() {
     glfwTerminate();
 }
 
-void window::toggleCursor() {
-    disabledCursor = !disabledCursor;
-    glfwSetInputMode(window, GLFW_CURSOR, disabledCursor ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+void Camera::makeMatrices() {
+    vec3 forward_proj = { cosf(angles.x), 0, sinf(angles.x) };
+    vec3 right = { -forward_proj.z, 0, forward_proj.x };
+    vec3 forward = forward_proj * cosf(angles.y) + vec3(0, 1, 0) * sinf(angles.y);
+    vec3 up = vec3(0, 1, 0) * cosf(angles.z) + right * sinf(angles.z);
+    view = glm::lookAt(pos, pos+forward, up);
+    proj = glm::perspective(glm::radians(fov), (f32)window::width/(f32)window::height, 0.01f, 1000.0f);
 }
 
-bool window::isPressed(i32 key) {
-    return glfwGetKey(window::window, key) == GLFW_PRESS;
+void Camera::setMatrices() {
+    shader::setMat4("view", view);
+    shader::setMat4("proj", proj);
 }
+
 
 void SimpleMesh::addAttribs() {
     gl::addAttribToVAO(0, 3, GL_FLOAT, 8*sizeof(float), 0);

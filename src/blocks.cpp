@@ -7,7 +7,7 @@ const Direction directionOpposite[DIRECTION_COUNT] = {
     DOWN, UP
 };
 
-glm::ivec3 directionVector[DIRECTION_COUNT] = {
+ivec3 directionVector[DIRECTION_COUNT] = {
     { 1, 0, 0},
     { 0, 0, 1},
     {-1, 0, 0},
@@ -20,7 +20,7 @@ const char* directionNames[DIRECTION_COUNT] = {
     "east", "south", "west", "north", "up", "down"
 };
 
-glm::ivec2 directionToAxisAndSign[DIRECTION_COUNT] = {
+ivec2 directionToAxisAndSign[DIRECTION_COUNT] = {
     { 0, 1 },
     { 2, 1 },
     { 0, -1 }, 
@@ -50,8 +50,8 @@ BlockModel* NoModel::constructor(DataEntry* de) {
 
 // TODO: remove u and v because they are populated on the spot
 struct VoxelVertexIntermediary {
-    glm::ivec3 xyz;
-    glm::ivec2 uv;
+    ivec3 xyz;
+    ivec2 uv;
 };
 
 VoxelVertexIntermediary cubeFacesVV[DIRECTION_COUNT*4] = {
@@ -202,7 +202,7 @@ void CubeModel::addToMesh(BlockModel::DrawInfo drawinfo) {
         // otherwise skip
 
     for(u32 dir=0; dir<DIRECTION_COUNT; dir++) {
-        glm::ivec3 dv = directionVector[dir];
+        ivec3 dv = directionVector[dir];
         Chunk::blockID bid = 0;
         if(drawinfo.chunk.inBounds(drawinfo.blockPos + dv))
             bid = drawinfo.chunk.blocks[Chunk::indexOf(drawinfo.blockPos + dv)];
@@ -242,15 +242,15 @@ void CubeModel::addToMesh(BlockModel::DrawInfo drawinfo) {
         // for each vertex we check the block on the sides on color it less the more neighbours it has
         for(u32 faceVertex=0; faceVertex<4; faceVertex++) {
             VoxelVertex& vertex = drawinfo.mesh.vertices[drawinfo.mesh.vertices.size()-4+faceVertex];
-            glm::ivec3 p = { (vertex.pos_ao&0x3F), (vertex.pos_ao&0xFC0)>>6,(vertex.pos_ao&0x3F000)>>12 };
-            glm::vec3 g = glm::vec3(p) - glm::vec3(drawinfo.blockPos);
+            ivec3 p = { (vertex.pos_ao&0x3F), (vertex.pos_ao&0xFC0)>>6,(vertex.pos_ao&0x3F000)>>12 };
+            vec3 g = vec3(p) - vec3(drawinfo.blockPos);
             //cout << g.x << " " << g.y << " " << g.z << "\n";
-            g = glm::vec3(-1, -1, -1) + 2.0f*g;
+            g = vec3(-1, -1, -1) + 2.0f*g;
             // g gives us one of the 8 corners, 1or -1 for each axis
             u32 neighbours = 0;
-            glm::vec3 ns[7] = { g, {g.x, g.y, 0}, {g.x, 0, g.z}, {0, g.y, g.z}, {g.x, 0, 0}, {0,g.y,0}, {0,0,g.z} };
+            vec3 ns[7] = { g, {g.x, g.y, 0}, {g.x, 0, g.z}, {0, g.y, g.z}, {g.x, 0, 0}, {0,g.y,0}, {0,0,g.z} };
             for(u32 nsi=0; nsi<7; nsi++) {
-                glm::ivec3 nsint = ns[nsi];
+                ivec3 nsint = ns[nsi];
                 //cout << "{" << nsint.x << " " << nsint.y << " " << nsint.z << "} ";
                 nsint += drawinfo.blockPos;
                 if(drawinfo.chunk.inBounds(nsint)) {

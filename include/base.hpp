@@ -27,6 +27,17 @@ using std::cerr;
 using std::ostream;
 using std::map;
 using std::pair;
+#if 1
+#include <glm/matrix.hpp>
+using glm::mat3;
+using glm::mat4;
+using glm::vec2;
+using glm::vec3;
+using glm::vec4;
+using glm::ivec2;
+using glm::ivec3;
+using glm::ivec4;
+#endif
 
 #ifdef DEBUG
     inline string removeSourceBeggining(string filename) { return filename.substr(0); }

@@ -1,7 +1,8 @@
 #pragma once
 #include "base.hpp"
+#include "resources.hpp"
 #include <fstream>
-#include <glm/ext/vector_int2.hpp>
+#include <glm/vec2.hpp>
 
 namespace Log {
     extern std::ofstream logfile;
@@ -18,7 +19,7 @@ namespace Log {
         const char* prefix;
         const bool shouldExit;
         template<typename... Ts>
-        inline logger& operator()(Ts... args) {
+        inline const logger& operator()(Ts... args) const {
             changeColor(color);
             cerr << prefix;
             resetColor();
@@ -32,15 +33,37 @@ namespace Log {
             return *this;
         }
     };
-    extern logger fatal;
-    extern logger error;
-    extern logger warning;
-    extern logger info;
+    extern const logger fatal;
+    extern const logger error;
+    extern const logger warning;
+    extern const logger info;
 };
 
-namespace Controller {
-    extern glm::ivec2 mousePos;
-    extern glm::ivec2 mouseDif;
+namespace Input {
+    extern bool disabledCursor;
+    extern vec2 mousePos;
+    extern vec2 mouseDiff;
 
+    void toggleCursor();
+    bool isPressed(i32 key);
+
+    struct EventDescription {
+        enum Type : u8 {
+            KEY_DOWN,
+            KEY_UP,
+            KEY_PRESS, // with repeats
+            KEY_IS_PRESSED // continous
+        };
+        Type type;
+        u32 glfwKey;
+        u8 currentState;
+
+        EventDescription(Type type, u32 glfwKey) : type(type), glfwKey(glfwKey), currentState(0) {}
+        void update();
+        bool happened();
+    };
+    extern registry<EventDescription> events;
+
+    void init();
     void processInput();
 };

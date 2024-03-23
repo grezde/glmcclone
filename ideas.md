@@ -3,14 +3,15 @@
 
 ## TODOS
 
-- Fix shaders and uniforms to use numbers instead of strings
 - ~~Split world.cpp file into multiple files~~
 - ~~Add a a direction parameter to the faces of the cube model~~
 - ~~Check faces on chunk edges~~
 - Add toggleable gravity force and collision for the player
+- Frustum culling to double the FPS
+- Cull chunks that are not visible underground
 - Entity system with forces
 - Greedy meshing
-- Implement multi-threading for saving + generating, rendering and updating
+- Implement multi-threading for saving, generating, rendering and updating
 - Saving to file
 - Logging system and errors failsafes
 - Lighting with 3 colors

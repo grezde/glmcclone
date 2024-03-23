@@ -13,9 +13,9 @@ enum Direction: u32 {
     DIRECTION_COUNT = 6
 };
 extern const Direction directionOpposite[DIRECTION_COUNT];
-extern glm::ivec3 directionVector[DIRECTION_COUNT];
+extern ivec3 directionVector[DIRECTION_COUNT];
 extern const char* directionNames[DIRECTION_COUNT];
-extern glm::ivec2 directionToAxisAndSign[DIRECTION_COUNT];
+extern ivec2 directionToAxisAndSign[DIRECTION_COUNT];
 
 struct DataEntry;
 struct Chunk;
@@ -26,7 +26,7 @@ struct BlockModel {
         VoxelMesh& mesh;
         const Chunk& chunk;
         const Chunk* neighbours[DIRECTION_COUNT];
-        glm::ivec3 blockPos;
+        ivec3 blockPos;
     };
     virtual void addToMesh(DrawInfo drawinfo) = 0;
 };

@@ -77,13 +77,13 @@ struct DataEntry {
     
     inline bool isIVEC2() const { return type == PAIR && tuple.first->isInteger() && tuple.second->isInteger(); }
     inline bool isIVEC3() const { return type == TUPLE3 && tuple.first->isInteger() && tuple.second->isInteger() && tuple.third->isInteger(); }
-    inline glm::ivec2 getIVEC2() const { return { (i32)tuple.first->geti64(), (i32)tuple.second->geti64() }; }
-    inline glm::ivec3 getIVEC3() const { return { (i32)tuple.first->geti64(), (i32)tuple.second->geti64(), (i32)tuple.third->geti64() }; }
+    inline ivec2 getIVEC2() const { return { (i32)tuple.first->geti64(), (i32)tuple.second->geti64() }; }
+    inline ivec3 getIVEC3() const { return { (i32)tuple.first->geti64(), (i32)tuple.second->geti64(), (i32)tuple.third->geti64() }; }
 
     inline bool isVEC2() const { return type == PAIR && tuple.first->isFloating() && tuple.second->isFloating(); }
     inline bool isVEC3() const { return type == TUPLE3 && tuple.first->isFloating() && tuple.second->isFloating() && tuple.third->isFloating(); }
-    inline glm::vec2 getVEC2() const { return { tuple.first->getf64(), tuple.second->getf64() }; }
-    inline glm::vec3 getVEC3() const { return { tuple.first->getf64(), tuple.second->getf64(), tuple.third->getf64() }; }
+    inline vec2 getVEC2() const { return { tuple.first->getf64(), tuple.second->getf64() }; }
+    inline vec3 getVEC3() const { return { tuple.first->getf64(), tuple.second->getf64(), tuple.third->getf64() }; }
 
     inline bool has(const string& key) const { return dict.find(key) != dict.end(); }
     inline DataEntry* child(const string& key) { return dict[key]; }

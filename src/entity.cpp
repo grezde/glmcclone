@@ -5,18 +5,19 @@
 #include <glm/ext/matrix_transform.hpp>
 
 void Entity::updateMeshes(f32 time) {
-    CuboidsEntityModel* model = (CuboidsEntityModel*)Registry::entities.items[type].model;
-    if(!model) return;
+    EntityModel* modelB = Registry::entities.items[type].model;
+    if(!modelB || modelB->type == Registry::entityModels.names["none"]) return;
+    CuboidsEntityModel* model = (CuboidsEntityModel*)modelB;
     u32 index=0;
     for(CuboidsEntityModel::Object& o : model->objects) {
-        glm::mat4 matrix(1);
+        mat4 matrix(1);
         matrix = glm::translate(matrix, pos);
         matrix = glm::translate(matrix, o.pivot/(f32)Registry::ATLASTILE);
         if(o.name == "head") {
             matrix = glm::rotate(matrix, 0.2f*std::sin(2.0f*time), {0, 1, 0});
-        } else if(o.name == "leg0" || o.name == "leg2") {
+        } else if(o.name == "leg0" || o.name == "leg3") {
             matrix = glm::rotate(matrix, -0.5f*std::sin(time+0.5f), {0, 0, 1});
-        } else if(o.name == "leg1" || o.name == "leg3") {
+        } else if(o.name == "leg1" || o.name == "leg2") {
             matrix = glm::rotate(matrix, 0.5f*std::sin(time+1.0f), {0, 0, 1});
         }
         matrix = glm::translate(matrix, -o.pivot/(f32)Registry::ATLASTILE);
@@ -119,10 +120,10 @@ CuboidsEntityModel::VertexIntermediary cuboidsVertices[DIRECTION_COUNT*4] = {
 
 void CuboidsEntityModel::Cuboid::makeIntermediary(CuboidsEntityModel::VertexIntermediary* vi) {
     memcpy(vi, cuboidsVertices, 24*sizeof(VertexIntermediary));
-    glm::vec3 sdimensions = glm::vec3(dimensions.z, dimensions.y, dimensions.x);
+    vec3 sdimensions = vec3(dimensions.z, dimensions.y, dimensions.x);
     for(u32 i=0; i<24; i++)
-        vi[i].xyz = -0.5f*sdimensions + glm::vec3(vi[i].xyz) * sdimensions;
-    glm::ivec2 multipliers[DIRECTION_COUNT] = { 
+        vi[i].xyz = -0.5f*sdimensions + vec3(vi[i].xyz) * sdimensions;
+    ivec2 multipliers[DIRECTION_COUNT] = { 
         { dimensions.x, -dimensions.y },
         { dimensions.z, -dimensions.y },
         { dimensions.x, -dimensions.y },
@@ -130,7 +131,7 @@ void CuboidsEntityModel::Cuboid::makeIntermediary(CuboidsEntityModel::VertexInte
         { -dimensions.x, -dimensions.z },
         { -dimensions.x, dimensions.z },
     };
-    glm::ivec2 offsets[DIRECTION_COUNT] = { 
+    ivec2 offsets[DIRECTION_COUNT] = { 
         { 0, dimensions.y},
         { -dimensions.z, dimensions.y },
         { dimensions.x+dimensions.z, dimensions.y },
@@ -143,11 +144,11 @@ void CuboidsEntityModel::Cuboid::makeIntermediary(CuboidsEntityModel::VertexInte
 }
 
 void CuboidsEntityModel::AppliedCuboid::makeIntermediary(CuboidsEntityModel::VertexIntermediary* vi) {
-    glm::mat3 rotation_mat = {};
-    glm::ivec2 facingAS = directionToAxisAndSign[facing];
-    glm::ivec2 downwardsAS = directionToAxisAndSign[downwards];
+    mat3 rotation_mat = {};
+    ivec2 facingAS = directionToAxisAndSign[facing];
+    ivec2 downwardsAS = directionToAxisAndSign[downwards];
     if(downwardsAS.x == facingAS.x) return;
-    glm::ivec2 other = { 0, 1 };
+    ivec2 other = { 0, 1 };
     if(downwardsAS.x == 0 || facingAS.x == 0)
         other.x = 1;
     if(downwardsAS.x == 1 || facingAS.x == 1)
@@ -203,8 +204,8 @@ void CuboidsEntityModel::makeMesh(Entity* entity) {
                 for(u32 i=dir*4; i<(dir+1)*4; i++)
                     mesh.vertices.push_back(SimpleVertex { 
                         .position = vi[i].xyz / (f32)Registry::ATLASTILE,
-                        .color = glm::vec4(1.0, 1.0, 1.0, 1.0),
-                        .texCoords = glm::vec2(vi[i].uv) / glm::vec2(gltexture.width, gltexture.height)
+                        .color = vec4(1.0, 1.0, 1.0, 1.0),
+                        .texCoords = vec2(vi[i].uv) / vec2(gltexture.width, gltexture.height)
                     });
                 mesh.indices.push_back(mesh.vertices.size()-4 + 0);
                 mesh.indices.push_back(mesh.vertices.size()-4 + 1);

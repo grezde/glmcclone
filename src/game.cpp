@@ -17,55 +17,55 @@
 bool Game::printFPS = false;
 bool Game::inspectMode = true;
 World Game::testWorld;
-glm::vec3 Game::cameraPos = { 21.0f, 26.0f, 21.0f };
-glm::vec2 Game::cameraAngle = { -3.141f*0.75f, 0 };
-glm::vec3 Game::cameraVel = { 0, 0, 0 };
+vec3 Game::cameraPos = { 21.0f, 26.0f, 21.0f };
+vec2 Game::cameraAngle = { -3.141f*0.75f, 0 };
+vec3 Game::cameraVel = { 0, 0, 0 };
 
 void Game::processInput(f32 dt) {
     static constexpr float cameraAngleSpeed = 2.0f;
     static constexpr float cameraSpeed = 8.0f;
     static bool prevEscape = false;
     static bool prevI = false;
-    static glm::vec2 lastMousePos = glm::vec2(0, 0);
+    static vec2 lastMousePos = vec2(0, 0);
     static bool lastMouseFirst = true;
 
-    glm::vec3 movement = {0, 0, 0};
-    if(window::isPressed(GLFW_KEY_W))
-        movement += glm::vec3(0, 0, 1);
-    if(window::isPressed(GLFW_KEY_A))
-        movement += glm::vec3(-1, 0, 0);
-    if(window::isPressed(GLFW_KEY_S))
-        movement += glm::vec3(0, 0, -1);
-    if(window::isPressed(GLFW_KEY_D))
-        movement += glm::vec3(1, 0, 0);
-    if(window::isPressed(GLFW_KEY_UP))
-        movement += glm::vec3(0, 1, 0);
-    if(window::isPressed(GLFW_KEY_DOWN))
-        movement += glm::vec3(0, -1, 0);
-    bool escape = window::isPressed(GLFW_KEY_ESCAPE);
+    vec3 movement = {0, 0, 0};
+    if(Input::isPressed(GLFW_KEY_W))
+        movement += vec3(0, 0, 1);
+    if(Input::isPressed(GLFW_KEY_A))
+        movement += vec3(-1, 0, 0);
+    if(Input::isPressed(GLFW_KEY_S))
+        movement += vec3(0, 0, -1);
+    if(Input::isPressed(GLFW_KEY_D))
+        movement += vec3(1, 0, 0);
+    if(Input::isPressed(GLFW_KEY_UP))
+        movement += vec3(0, 1, 0);
+    if(Input::isPressed(GLFW_KEY_DOWN))
+        movement += vec3(0, -1, 0);
+    bool escape = Input::isPressed(GLFW_KEY_ESCAPE);
     if(escape && !prevEscape)
-        window::toggleCursor();
-    bool I = window::isPressed(GLFW_KEY_I);
+        Input::toggleCursor();
+    bool I = Input::isPressed(GLFW_KEY_I);
     if(I && !prevI)
         inspectMode = !inspectMode;
     prevI = I; 
     prevEscape = escape;
 
-    glm::vec3 movementReal = movement.z * glm::vec3(std::cos(cameraAngle.x), 0, std::sin(cameraAngle.x))
-            + movement.y * glm::vec3(0, 1, 0)
-            + movement.x * glm::vec3(-std::sin(cameraAngle.x), 0, std::cos(cameraAngle.x));
+    vec3 movementReal = movement.z * vec3(std::cos(cameraAngle.x), 0, std::sin(cameraAngle.x))
+            + movement.y * vec3(0, 1, 0)
+            + movement.x * vec3(-std::sin(cameraAngle.x), 0, std::cos(cameraAngle.x));
     movementReal *= dt * cameraSpeed;
     cameraPos += movementReal;
 
-    if(window::disabledCursor) {
-        glm::vec2 mc = window::mousePos - lastMousePos;
+    if(Input::disabledCursor) {
+        vec2 mc = Input::mousePos - lastMousePos;
         if(lastMouseFirst && (mc.x != 0.0f || mc.y != 0.0f)) {
             lastMouseFirst = false;
             return;
         }
         mc.x /= window::width;
         mc.y /= window::height;
-        cameraAngle += glm::vec2(mc.x, mc.y) * cameraAngleSpeed;
+        cameraAngle += vec2(mc.x, mc.y) * cameraAngleSpeed;
         constexpr float PI = 3.14159268f;
         if(cameraAngle.y > 0.5f*PI*0.99f)
             cameraAngle.y = 0.5f*PI*0.99f;
@@ -76,12 +76,13 @@ void Game::processInput(f32 dt) {
         if(cameraAngle.x < -PI)
             cameraAngle.x += 2.0*PI;
     }
-    lastMousePos = window::mousePos;
+    lastMousePos = Input::mousePos;
 }
 
 void Game::init() {
     Log::init();
     window::init(1200, 900, "Hello warld");
+    Input::init();
     Registry::init();
     testWorld.init();
     window::beginDrawing();
@@ -110,19 +111,19 @@ void Game::run() {
         }
 
         glfwPollEvents();
-        processInput(dt);
-        
+        //processInput(dt);
+        Input::processInput();
         testWorld.update(time, dt);
 
         window::beginDrawing();
 
-        glm::mat4 view = glm::lookAt(cameraPos, cameraPos + glm::vec3(
+        mat4 view = glm::lookAt(cameraPos, cameraPos + vec3(
             std::cos(cameraAngle.x)*std::cos(cameraAngle.y),
             std::sin(cameraAngle.y),
             std::sin(cameraAngle.x)*std::cos(cameraAngle.y)
-        ), glm::vec3(0, 1, 0));
+        ), vec3(0, 1, 0));
         
-        glm::mat4 proj = glm::perspective(glm::radians(70.0f), (f32)window::width/(f32)window::height, 0.01f, 1000.0f);
+        mat4 proj = glm::perspective(glm::radians(70.0f), (f32)window::width/(f32)window::height, 0.01f, 1000.0f);
 
         shader::bind(Registry::shaders["voxel"]);
         shader::setMat4("view", view);
@@ -139,70 +140,4 @@ void Game::run() {
 
 void Game::destory() {
     window::destroy();
-}
-
-std::ofstream Log::logfile;
-Log::logger Log::fatal = logger {
-    .color = 1,
-    .prefix = "FATAL",
-    .shouldExit = true
-};
-Log::logger Log::error = logger {
-    .color = 1,
-    .prefix = "ERROR",
-    .shouldExit = false
-};
-Log::logger Log::warning = logger {
-    .color = 1,
-    .prefix = "WARN",
-    .shouldExit = false
-};
-Log::logger Log::info = logger {
-    .color = 1,
-    .prefix = "INFO",
-    .shouldExit = false
-};
-
-#ifdef WINDOWS
-
-#include <windows.h>
-
-HANDLE hConsole;
-CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-WORD saved_attributes;
-
-void initConsole() {
-    hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-    GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
-    saved_attributes = consoleInfo.wAttributes;
-}
-
-void Log::changeColor(u8 color) {
-    SetConsoleTextAttribute(hConsole, FOREGROUND_BLUE);
-}
-
-void Log::resetColor() {
-    SetConsoleTextAttribute(hConsole, saved_attributes);
-}
-
-#else
-
-void initConsole() {}
-
-void Log::changeColor(u8 color) {
-    (void) color;
-    // TODO: implement colors in logging
-    cerr << "\x1b[0;30m";
-}
-
-void Log::resetColor() {
-    cerr << "\x1b[0m";
-}
-
-#endif
-
-void Log::init() {
-    initConsole();
-    logfile.open("output/log.txt");
-    if(!logfile.is_open()) ERR_EXIT("Cound not open log file");
 }
