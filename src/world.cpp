@@ -271,7 +271,6 @@ void World::update(f32 time, f32 dt) {
             else ++it;
         }
     }
-
     
 }
 
@@ -310,5 +309,7 @@ pair<vec3, vec3> World::collide(const AABB& aabb, vec3 oldpos, vec3 newpos) cons
 }
 
 void World::destroy() {
+
+    
 
 }
